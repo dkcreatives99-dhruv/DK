@@ -1,0 +1,99 @@
+{
+  "summary": {
+    "total_tests": 5,
+    "passed_tests": 5,
+    "failed_tests": 0,
+    "success_rate": 100.0
+  },
+  "detailed_results": [
+    {
+      "test_name": "Health Check Endpoint",
+      "success": true,
+      "timestamp": "2026-01-12T10:38:26.582166",
+      "status_code": 200,
+      "response_data": {
+        "status": "healthy",
+        "timestamp": "2026-01-12T10:38:26.579198+00:00"
+      },
+      "error": null
+    },
+    {
+      "test_name": "API Root Endpoint",
+      "success": true,
+      "timestamp": "2026-01-12T10:38:26.617563",
+      "status_code": 200,
+      "response_data": {
+        "message": "DK Kinetic Digital API",
+        "status": "healthy"
+      },
+      "error": null
+    },
+    {
+      "test_name": "Contact Form Submission",
+      "success": true,
+      "timestamp": "2026-01-12T10:38:26.686697",
+      "status_code": 200,
+      "response_data": {
+        "success": true,
+        "message": "Thank you for reaching out! We'll get back to you shortly.",
+        "id": "be7c55c2-0905-4b72-9355-599426776230"
+      },
+      "request_data": {
+        "name": "Test User",
+        "email": "test@example.com",
+        "phone": "+91 98765 43210",
+        "company": "Test Company",
+        "service_interest": "Web Development",
+        "message": "This is a test message for API testing."
+      },
+      "error": null
+    },
+    {
+      "test_name": "Contact Form Validation",
+      "success": true,
+      "timestamp": "2026-01-12T10:38:26.767305",
+      "status_code": 422,
+      "response_data": {
+        "detail": [
+          {
+            "type": "value_error",
+            "loc": [
+              "body",
+              "email"
+            ],
+            "msg": "value is not a valid email address: An email address must have an @-sign.",
+            "input": "invalid-email",
+            "ctx": {
+              "reason": "An email address must have an @-sign."
+            }
+          }
+        ]
+      },
+      "request_data": {
+        "name": "",
+        "email": "invalid-email",
+        "message": ""
+      },
+      "error": null
+    },
+    {
+      "test_name": "Get Contacts Endpoint",
+      "success": true,
+      "timestamp": "2026-01-12T10:38:26.813087",
+      "status_code": 200,
+      "response_data": [
+        {
+          "id": "be7c55c2-0905-4b72-9355-599426776230",
+          "name": "Test User",
+          "email": "test@example.com",
+          "phone": "+91 98765 43210",
+          "company": "Test Company",
+          "service_interest": "Web Development",
+          "message": "This is a test message for API testing.",
+          "created_at": "2026-01-12T10:38:26.662040Z"
+        }
+      ],
+      "error": null
+    }
+  ]
+}

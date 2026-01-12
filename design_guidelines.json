@@ -1,0 +1,198 @@
+{
+  "brand_identity": {
+    "name": "DK Kinetic Digital LLP",
+    "tagline": "Accelerating Digital Future",
+    "tone": "Premium, Corporate, Futuristic, Trustworthy",
+    "archetype": "Electric & Neon (Future) + Swiss (Authority)",
+    "target_audience": "Startups, Corporates, E-commerce, Event Organizers"
+  },
+  "design_system": {
+    "typography": {
+      "headings": {
+        "font_family": "Syne, sans-serif",
+        "weights": ["700", "800"],
+        "letter_spacing": "-0.02em",
+        "usage": "Hero titles, Section headers"
+      },
+      "body": {
+        "font_family": "Manrope, sans-serif",
+        "weights": ["400", "500", "600"],
+        "usage": "Paragraphs, UI elements, Buttons"
+      },
+      "mono": {
+        "font_family": "JetBrains Mono, monospace",
+        "usage": "Technical specs, decorative labels"
+      }
+    },
+    "colors": {
+      "primary": {
+        "DEFAULT": "#2563EB",
+        "foreground": "#FFFFFF",
+        "hover": "#1D4ED8"
+      },
+      "secondary": {
+        "DEFAULT": "#06B6D4",
+        "foreground": "#FFFFFF"
+      },
+      "accent": {
+        "DEFAULT": "#7C3AED",
+        "foreground": "#FFFFFF"
+      },
+      "background": {
+        "dark": "#020617",
+        "light": "#F8FAFC",
+        "card_dark": "rgba(2, 6, 23, 0.7)",
+        "card_light": "#FFFFFF"
+      },
+      "text": {
+        "primary_dark": "#F8FAFC",
+        "secondary_dark": "#94A3B8",
+        "primary_light": "#0F172A",
+        "secondary_light": "#64748B"
+      },
+      "gradients": {
+        "hero": "linear-gradient(135deg, #2563EB 0%, #06B6D4 100%)",
+        "glass": "linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)",
+        "beam": "linear-gradient(90deg, transparent, #2563EB, transparent)"
+      }
+    },
+    "spacing": {
+      "container_padding": "px-6 md:px-12 lg:px-24",
+      "section_gap": "py-20 md:py-32",
+      "element_gap": "gap-6 md:gap-8"
+    },
+    "borders": {
+      "radius": {
+        "button": "9999px",
+        "card": "16px",
+        "input": "12px"
+      },
+      "width": "1px",
+      "color_dark": "rgba(255, 255, 255, 0.1)",
+      "color_light": "rgba(0, 0, 0, 0.1)"
+    },
+    "shadows": {
+      "glow": "0 0 20px rgba(37, 99, 235, 0.3)",
+      "card": "0 4px 24px -1px rgba(0, 0, 0, 0.1)",
+      "glass": "0 8px 32px 0 rgba(31, 38, 135, 0.37)"
+    }
+  },
+  "layout_strategies": {
+    "theme_mode": "Hybrid",
+    "sections": {
+      "hero": {
+        "theme": "dark",
+        "layout": "Centered with asymmetric background elements",
+        "features": ["3D Abstract Background", "Glassmorphism Navbar", "Glowing CTA"]
+      },
+      "services": {
+        "theme": "light",
+        "layout": "Bento Grid (Tetris Mode)",
+        "features": ["Hover reveal cards", "Iconography", "Clean typography"]
+      },
+      "about": {
+        "theme": "light",
+        "layout": "Split Screen (Image Left, Text Right)",
+        "features": ["Team photo", "Mission statement", "Stats counter"]
+      },
+      "tech_showcase": {
+        "theme": "dark",
+        "layout": "Full width immersive",
+        "features": ["Brain circuit visual", "Animated data points", "Neon accents"]
+      },
+      "industries": {
+        "theme": "light",
+        "layout": "Carousel / Slider",
+        "features": ["Industry icons", "Case study snippets"]
+      },
+      "contact": {
+        "theme": "dark",
+        "layout": "Two column (Form + Map/Info)",
+        "features": ["Glassmorphism form", "Map integration", "Office image"]
+      }
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-white rounded-full px-8 py-4 font-semibold hover:shadow-glow transition-all duration-300",
+      "secondary": "bg-transparent border border-white/20 text-white rounded-full px-8 py-4 hover:bg-white/10 transition-all duration-300",
+      "outline_dark": "border border-primary text-primary hover:bg-primary hover:text-white rounded-full px-6 py-3 transition-all"
+    },
+    "cards": {
+      "service_card": "bg-white p-8 rounded-2xl border border-slate-100 hover:shadow-xl transition-all duration-300 group relative overflow-hidden",
+      "tech_card": "bg-slate-900/50 backdrop-blur-md border border-white/10 p-6 rounded-xl hover:border-primary/50 transition-all"
+    },
+    "inputs": {
+      "default": "bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+    }
+  },
+  "assets": {
+    "images": {
+      "hero_bg": {
+        "url": "https://images.unsplash.com/photo-1746470427686-4c3551f3d689?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwxfHxmdXR1cmlzdGljJTIwZGlnaXRhbCUyMG5ldHdvcmslMjBhYnN0cmFjdCUyMGJsdWV8ZW58MHx8fHwxNzY4MjEzNzY1fDA&ixlib=rb-4.1.0&q=85",
+        "alt": "Futuristic Blue Abstract Network",
+        "usage": "Hero Section Background"
+      },
+      "services_marketing": {
+        "url": "https://images.unsplash.com/photo-1686061594225-3e92c0cd51b0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwxfHxkaWdpdGFsJTIwbWFya2V0aW5nJTIwc2VvJTIwYW5hbHl0aWNzJTIwZGFzaGJvYXJkfGVufDB8fHx8MTc2ODIxMzc2N3ww&ixlib=rb-4.1.0&q=85",
+        "alt": "Digital Marketing Analytics Dashboard",
+        "usage": "Services Section - Digital Marketing"
+      },
+      "tech_ai": {
+        "url": "https://images.unsplash.com/photo-1737505599159-5ffc1dcbc08f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2Mzl8MHwxfHNlYXJjaHwxfHxhcnRpZmljaWFsJTIwaW50ZWxsaWdlbmNlJTIwYnJhaW4lMjBjaXJjdWl0fGVufDB8fHx8MTc2ODIxMzc3MHww&ixlib=rb-4.1.0&q=85",
+        "alt": "AI Brain Circuit",
+        "usage": "Technology Section - AI Solutions"
+      },
+      "events_media": {
+        "url": "https://images.unsplash.com/photo-1639682687092-0264e96cbb71?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzR8MHwxfHNlYXJjaHwyfHxjb3Jwb3JhdGUlMjBldmVudCUyMHN0YWdlJTIwbGlnaHRpbmd8ZW58MHx8fHwxNzY4MjEzNzczfDA&ixlib=rb-4.1.0&q=85",
+        "alt": "Corporate Event Stage Lighting",
+        "usage": "Services Section - Event Management"
+      },
+      "team_group": {
+        "url": "https://images.unsplash.com/photo-1667351326034-c6d733c57dc9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHxpbmRpYW4lMjBjb3Jwb3JhdGUlMjBidXNpbmVzcyUyMHRlYW0lMjBwcm9mZXNzaW9uYWwlMjBzbWlsaW5nfGVufDB8fHx8MTc2ODIxMzc5MXww&ixlib=rb-4.1.0&q=85",
+        "alt": "DK Kinetic Team",
+        "usage": "About Us Section"
+      },
+      "office_building": {
+        "url": "https://images.unsplash.com/photo-1635652618167-55b4411ffdbf?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBnbGFzcyUyMG9mZmljZSUyMGJ1aWxkaW5nJTIwaW5kaWElMjBleHRlcmlvcnxlbnwwfHx8fDE3NjgyMTM3OTN8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "DK Kinetic Office",
+        "usage": "Contact Section"
+      }
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px, rounded caps"
+    }
+  },
+  "tech_stack": {
+    "framework": "React",
+    "styling": "Tailwind CSS",
+    "animation": "Framer Motion",
+    "ui_library": "Shadcn/UI (Customized)"
+  },
+  "instructions_to_main_agent": [
+    "Install 'framer-motion' and 'lucide-react' immediately.",
+    "Configure 'tailwind.config.js' to include the custom colors and fonts (Syne, Manrope).",
+    "Create a 'Layout' component that handles the Navbar and Footer globally.",
+    "Implement the 'Hero' section first with the abstract background and glassmorphism navbar.",
+    "Use the 'Bento Grid' pattern for the Services section.",
+    "Ensure all interactive elements have 'data-testid' attributes.",
+    "Do not use default Shadcn styles; override them with the specified border radius and colors.",
+    "For the 'Contact' form, use Shadcn form components but style them with the 'inputs.default' class defined above.",
+    "Ensure the site is fully responsive, stacking grids to single columns on mobile."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition. Eg: 'transition: all'. This results in breaking transforms.",
+    "You MUST NOT center align the app container.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations.",
+    "NEVER use AI assistant Emoji characters for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Use 'sonner' for toasts."
+  ]
+}

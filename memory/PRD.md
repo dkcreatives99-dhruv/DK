@@ -1,7 +1,7 @@
-# DK Kinetic Digital LLP - Corporate Website PRD
+# DK Kinetic Digital LLP - Corporate Website with GST Invoice Management PRD
 
 ## Original Problem Statement
-Create a modern, high-performance, conversion-focused website for DK Kinetic Digital LLP - a digital marketing & technology company based in Rohtak, Haryana, India. The website should be premium, corporate, clean, futuristic, and trustworthy.
+Create a modern, high-performance, conversion-focused website for DK Kinetic Digital LLP with integrated GST Invoice Management System accessible via hidden admin route.
 
 ## Company Details
 - **Name:** DK Kinetic Digital LLP
@@ -10,74 +10,119 @@ Create a modern, high-performance, conversion-focused website for DK Kinetic Dig
 - **Business Nature:** Digital Marketing, Branding, Web Development, AI Solutions, Event Management
 
 ## User Personas
-1. **Startups** - Looking for digital launch strategies
-2. **Corporates** - Enterprise digital transformation
-3. **E-commerce** - Online sales optimization
-4. **Event Organizers** - Brand experience creation
-5. **Tech Companies** - AI and automation solutions
+1. **Website Visitors** - Potential clients viewing services
+2. **Admin Users** - Business owners managing invoices, customers, expenses
 
-## Core Requirements (Static)
-- Modern, responsive corporate website
-- Dark theme with electric blue accent
-- Contact form with database storage
+## Core Requirements
+
+### Public Website
+- Modern corporate design with dark theme and electric blue accent
 - All service categories showcased
-- Leadership team display
-- Google Maps integration
-- Mobile-responsive design
+- Contact form with database storage
+
+### Admin Portal (Invoice Management)
+- GST-compliant invoice generation
+- Customer and product management
+- Expense tracking
+- Financial ledger
+- PDF invoice download
 
 ## What's Been Implemented (December 2025)
-- [x] Hero Section with animated background and CTAs
-- [x] Services Section (Bento grid layout) - 5 service categories
+
+### Public Website
+- [x] Hero Section with animated background
+- [x] Services Section (5 service categories in bento grid)
 - [x] About Us Section with team and values
-- [x] Technology & AI Section with floating cards
+- [x] Technology & AI Section
 - [x] Industries Section (8 industries)
-- [x] Contact Form with MongoDB storage
+- [x] Contact Form (MongoDB storage)
 - [x] Footer with social links
-- [x] Glassmorphism navigation bar
 - [x] Smooth scroll navigation
 - [x] Mobile responsive design
 - [x] Framer Motion animations
-- [x] Backend API for contact submissions
+
+### Admin Portal (/admin)
+- [x] Admin authentication page (Supabase Auth)
+- [x] Dashboard with stats
+- [x] Invoice creation with GST calculation (CGST+SGST/IGST)
+- [x] Invoice viewing with PDF download
+- [x] Customer management (CRUD)
+- [x] Product/Service catalog (CRUD)
+- [x] Expense tracking (CRUD)
+- [x] Financial ledger (Income/Expenses/Profit)
+- [x] Business settings
 
 ## Tech Stack
 - **Frontend:** React, Tailwind CSS, Framer Motion, Shadcn/UI
-- **Backend:** FastAPI, Python
-- **Database:** MongoDB
-- **Fonts:** Syne (headings), Manrope (body), JetBrains Mono (code)
+- **Backend:** FastAPI, Python (contact form)
+- **Databases:** 
+  - MongoDB (contact form submissions)
+  - Supabase PostgreSQL (invoice management)
+- **Auth:** Supabase Authentication
+
+## Admin Credentials
+- **Email:** dhruvk99999@gmail.com
+- **Password:** Dhruv@1503
+- **NOTE:** Email confirmation required before login
+
+## Database Schema (Supabase)
+Tables created:
+- business (user business profile)
+- customers (customer records)
+- products (product/service catalog)
+- invoices (invoice records)
+- invoice_items (line items)
+- expenses (expense tracking)
 
 ## API Endpoints
+
+### Backend (FastAPI)
 - `GET /api/` - Health check
 - `GET /api/health` - Status check
 - `POST /api/contact` - Contact form submission
-- `GET /api/contacts` - List all contacts (admin)
+- `GET /api/contacts` - List contacts (admin)
+
+### Frontend (Supabase)
+All data operations through Supabase client library.
+
+## Important Notes
+
+### Email Confirmation Required
+To use the admin portal, the user must:
+1. Check email (dhruvk99999@gmail.com) for Supabase confirmation
+2. Click the confirmation link
+3. Then sign in at /admin
+
+### Database Setup
+The SQL schema file is at `/app/frontend/src/lib/schema.sql`
+Tables and RLS policies should already be created in Supabase.
 
 ## Prioritized Backlog
 
 ### P0 (Critical) - DONE
-- [x] Homepage with all sections
-- [x] Contact form functionality
-- [x] Mobile responsiveness
+- [x] Public website with all sections
+- [x] Admin login page
+- [x] Invoice management system
 
-### P1 (High Priority) - Future
-- [ ] Add real company images/logo
-- [ ] Connect social media links
-- [ ] Add real phone number and email
-- [ ] Email notification for new leads
+### P1 (High Priority) - User Action Required
+- [ ] Confirm email to activate admin account
+- [ ] Set up business profile in Settings
 
 ### P2 (Medium Priority) - Future
+- [ ] Email notifications for new leads
 - [ ] Blog section
-- [ ] Case studies/portfolio
 - [ ] Client testimonials carousel
-- [ ] Live chat widget
+- [ ] Case studies/portfolio
+- [ ] WhatsApp invoice sharing
 
 ### P3 (Low Priority) - Future
-- [ ] Admin dashboard for leads
+- [ ] Recurring invoices
+- [ ] Payment gateway integration
 - [ ] Multi-language support
-- [ ] Newsletter subscription
-- [ ] SEO optimization (sitemap, meta tags)
+- [ ] Tax reports export
 
 ## Next Tasks
-1. Update contact info with real details
-2. Add company logo
-3. Integrate email notifications for leads
-4. Add client testimonials
+1. Confirm email to activate admin account
+2. Set up business profile with GSTIN
+3. Add customers and products
+4. Create first invoice

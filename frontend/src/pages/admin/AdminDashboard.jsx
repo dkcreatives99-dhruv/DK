@@ -90,7 +90,7 @@ const AdminDashboard = () => {
         <div>
           <h1 className="text-2xl font-syne font-bold text-slate-900">Dashboard</h1>
           <p className="text-slate-500 font-manrope text-sm mt-1">
-            Welcome back! Here's your business overview.
+            Welcome back! Here&apos;s your business overview.
           </p>
         </div>
         <Button

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { businessAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { getBusiness, createBusiness, updateBusiness } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,12 +27,11 @@ const AdminSettings = () => {
 
   useEffect(() => {
     fetchBusiness();
-  }, [user]);
+  }, []);
 
   const fetchBusiness = async () => {
-    if (!user) return;
     try {
-      const { data, error } = await getBusiness(user.id);
+      const data = await businessAPI.get();
       if (data) {
         setBusiness(data);
         setFormData({
@@ -59,17 +58,14 @@ const AdminSettings = () => {
     setSaving(true);
     try {
       if (business) {
-        const { error } = await updateBusiness(business.id, formData);
-        if (error) throw error;
-        toast.success('Business settings updated');
+        await businessAPI.update(formData);
       } else {
-        const { error } = await createBusiness({ ...formData, user_id: user.id });
-        if (error) throw error;
-        toast.success('Business profile created');
+        await businessAPI.create(formData);
       }
+      toast.success('Business settings saved successfully');
       fetchBusiness();
     } catch (error) {
-      toast.error(error.message || 'Failed to save settings');
+      toast.error(error.response?.data?.detail || 'Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -177,12 +173,12 @@ const AdminSettings = () => {
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
               <span className="text-primary font-syne font-bold text-lg">
-                {user?.email?.[0]?.toUpperCase() || 'U'}
+                {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
               </span>
             </div>
             <div>
-              <p className="font-manrope font-medium text-slate-900">{user?.email}</p>
-              <p className="text-sm text-slate-500">Signed in via Supabase Auth</p>
+              <p className="font-manrope font-medium text-slate-900">{user?.name}</p>
+              <p className="text-sm text-slate-500">{user?.email}</p>
             </div>
           </div>
         </CardContent>

@@ -1,22 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { getLedgerData } from '@/services/api';
+import { ledgerAPI } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, IndianRupee, Clock, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 const AdminLedger = () => {
-  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchLedgerData();
-  }, [user]);
+  }, []);
 
   const fetchLedgerData = async () => {
-    if (!user) return;
     try {
-      const ledgerData = await getLedgerData(user.id);
+      const ledgerData = await ledgerAPI.getData();
       setData(ledgerData);
     } catch (error) {
       console.error('Failed to load ledger data:', error);
@@ -138,14 +135,14 @@ const AdminLedger = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {data.recentIncome.length === 0 ? (
+            {(data.recentIncome || []).length === 0 ? (
               <div className="p-6 text-center text-slate-500 text-sm">No paid invoices yet</div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {data.recentIncome.map((inv) => (
+                {(data.recentIncome || []).map((inv) => (
                   <div key={inv.id} className="px-6 py-4 flex items-center justify-between">
                     <div>
-                      <p className="font-manrope font-medium text-slate-900">{inv.customers?.name || 'Customer'}</p>
+                      <p className="font-manrope font-medium text-slate-900">{inv.customer?.name || 'Customer'}</p>
                       <p className="text-xs text-slate-500">{inv.invoice_number} • {formatDate(inv.payment_date || inv.created_at)}</p>
                     </div>
                     <span className="font-manrope font-semibold text-green-600">+{formatCurrency(inv.total_amount)}</span>
@@ -165,11 +162,11 @@ const AdminLedger = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {data.recentExpenses.length === 0 ? (
+            {(data.recentExpenses || []).length === 0 ? (
               <div className="p-6 text-center text-slate-500 text-sm">No expenses recorded yet</div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {data.recentExpenses.map((exp) => (
+                {(data.recentExpenses || []).map((exp) => (
                   <div key={exp.id} className="px-6 py-4 flex items-center justify-between">
                     <div>
                       <p className="font-manrope font-medium text-slate-900">{exp.category}</p>
@@ -190,7 +187,7 @@ const AdminLedger = () => {
           <CardTitle className="font-syne font-bold text-slate-900">Invoice Payment Status</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {data.allInvoices.length === 0 ? (
+          {(data.allInvoices || []).length === 0 ? (
             <div className="p-6 text-center text-slate-500 text-sm">No invoices yet</div>
           ) : (
             <div className="overflow-x-auto">
@@ -205,10 +202,10 @@ const AdminLedger = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {data.allInvoices.map((inv) => (
+                  {(data.allInvoices || []).map((inv) => (
                     <tr key={inv.id} className="hover:bg-slate-50">
                       <td className="px-6 py-4 font-manrope font-medium text-slate-900">{inv.invoice_number}</td>
-                      <td className="px-6 py-4 font-manrope text-slate-600">{inv.customers?.name || 'N/A'}</td>
+                      <td className="px-6 py-4 font-manrope text-slate-600">{inv.customer?.name || 'N/A'}</td>
                       <td className="px-6 py-4 font-manrope text-slate-500 text-sm">{formatDate(inv.invoice_date)}</td>
                       <td className="px-6 py-4 font-manrope font-semibold text-slate-900 text-right">{formatCurrency(inv.total_amount)}</td>
                       <td className="px-6 py-4 text-center">{getStatusBadge(inv.payment_status)}</td>

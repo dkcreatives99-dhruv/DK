@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { getExpenses, createExpense, updateExpense, deleteExpense } from '@/services/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { expensesAPI } from '@/services/api';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Receipt, IndianRupee } from 'lucide-react';
+import { Plus, Pencil, Trash2, Receipt } from 'lucide-react';
 
 const EXPENSE_CATEGORIES = [
   'Office Supplies', 'Rent', 'Utilities', 'Salaries', 'Marketing',
@@ -16,7 +15,6 @@ const EXPENSE_CATEGORIES = [
 const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'UPI', 'Credit Card', 'Debit Card', 'Cheque', 'Other'];
 
 const AdminExpenses = () => {
-  const { user } = useAuth();
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -28,13 +26,11 @@ const AdminExpenses = () => {
 
   useEffect(() => {
     fetchExpenses();
-  }, [user]);
+  }, []);
 
   const fetchExpenses = async () => {
-    if (!user) return;
     try {
-      const { data, error } = await getExpenses(user.id);
-      if (error) throw error;
+      const data = await expensesAPI.getAll();
       setExpenses(data || []);
     } catch (error) {
       toast.error('Failed to load expenses');
@@ -49,7 +45,7 @@ const AdminExpenses = () => {
       setFormData({
         category: expense.category || '',
         amount: expense.amount || '',
-        date: expense.date ? new Date(expense.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        date: expense.date ? expense.date.split('T')[0] : new Date().toISOString().split('T')[0],
         vendor: expense.vendor || '',
         description: expense.description || '',
         payment_method: expense.payment_method || ''
@@ -69,26 +65,23 @@ const AdminExpenses = () => {
     try {
       const data = { ...formData, amount: parseFloat(formData.amount) };
       if (editingExpense) {
-        const { error } = await updateExpense(editingExpense.id, data);
-        if (error) throw error;
+        await expensesAPI.update(editingExpense.id, data);
         toast.success('Expense updated successfully');
       } else {
-        const { error } = await createExpense({ ...data, user_id: user.id });
-        if (error) throw error;
+        await expensesAPI.create(data);
         toast.success('Expense added successfully');
       }
       setIsDialogOpen(false);
       fetchExpenses();
     } catch (error) {
-      toast.error(error.message || 'Failed to save expense');
+      toast.error(error.response?.data?.detail || 'Failed to save expense');
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this expense?')) return;
     try {
-      const { error } = await deleteExpense(id);
-      if (error) throw error;
+      await expensesAPI.delete(id);
       toast.success('Expense deleted');
       fetchExpenses();
     } catch (error) {

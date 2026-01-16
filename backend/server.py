@@ -531,11 +531,11 @@ async def get_next_number(current_user: dict = Depends(get_current_user)):
 @api_router.post("/invoices", response_model=InvoiceResponse)
 async def create_invoice(data: InvoiceCreate, current_user: dict = Depends(get_current_user)):
     # Get customer and business for GST calculation
-    customer = await db.customers.find_one({"id": data.customer_id, "user_id": current_user["id"]})
+    customer = await db.customers.find_one({"id": data.customer_id, "user_id": current_user["id"]}, {"_id": 0})
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     
-    business = await db.business.find_one({"user_id": current_user["id"]})
+    business = await db.business.find_one({"user_id": current_user["id"]}, {"_id": 0})
     
     # Calculate totals
     items = [item.model_dump() for item in data.items]

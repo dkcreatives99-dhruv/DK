@@ -48,15 +48,19 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = async (email, password) => {
     try {
+      console.log('Attempting login for:', email);
       const response = await authAPI.login(email, password);
+      console.log('Login successful:', response.user?.email);
       localStorage.setItem('token', response.access_token);
       localStorage.setItem('user', JSON.stringify(response.user));
       setUser(response.user);
       return { data: response, error: null };
     } catch (error) {
+      console.error('Login error:', error.response?.data || error.message);
+      const errorMessage = error.response?.data?.detail || error.message || 'Invalid email or password';
       return { 
         data: null, 
-        error: { message: error.response?.data?.detail || 'Invalid email or password' }
+        error: { message: errorMessage }
       };
     }
   };

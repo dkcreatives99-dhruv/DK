@@ -27,9 +27,9 @@ Create a modern, high-performance, conversion-focused website for DK Kinetic Dig
 - Financial ledger
 - PDF invoice download
 
-## What's Been Implemented (December 2025)
+## What's Been Implemented (January 2026)
 
-### Public Website
+### Public Website ✅
 - [x] Hero Section with animated background
 - [x] Services Section (5 service categories in bento grid)
 - [x] About Us Section with team and values
@@ -41,11 +41,12 @@ Create a modern, high-performance, conversion-focused website for DK Kinetic Dig
 - [x] Mobile responsive design
 - [x] Framer Motion animations
 
-### Admin Portal (/admin)
-- [x] Admin authentication page (Supabase Auth)
-- [x] Dashboard with stats
-- [x] Invoice creation with GST calculation (CGST+SGST/IGST)
+### Admin Portal (/admin) ✅ - Migrated to MongoDB
+- [x] JWT-based authentication (signup/login)
+- [x] Dashboard with business stats
+- [x] Invoice creation with GST calculation (CGST+SGST for intra-state, IGST for inter-state)
 - [x] Invoice viewing with PDF download
+- [x] Invoice list with payment status tracking
 - [x] Customer management (CRUD)
 - [x] Product/Service catalog (CRUD)
 - [x] Expense tracking (CRUD)
@@ -54,75 +55,135 @@ Create a modern, high-performance, conversion-focused website for DK Kinetic Dig
 
 ## Tech Stack
 - **Frontend:** React, Tailwind CSS, Framer Motion, Shadcn/UI
-- **Backend:** FastAPI, Python (contact form)
-- **Databases:** 
-  - MongoDB (contact form submissions)
-  - Supabase PostgreSQL (invoice management)
-- **Auth:** Supabase Authentication
+- **Backend:** FastAPI, Python
+- **Database:** MongoDB (all data - contacts, invoices, customers, products, expenses)
+- **Auth:** Custom JWT authentication (python-jose, passlib[bcrypt])
 
 ## Admin Credentials
 - **Email:** dhruvk99999@gmail.com
 - **Password:** Dhruv@1503
-- **NOTE:** Email confirmation required before login
+- **Access:** /admin route
 
-## Database Schema (Supabase)
-Tables created:
-- business (user business profile)
-- customers (customer records)
-- products (product/service catalog)
-- invoices (invoice records)
-- invoice_items (line items)
-- expenses (expense tracking)
+## Database Collections (MongoDB)
+- `users` - User accounts for admin access
+- `business` - User business profile with GSTIN
+- `customers` - Customer records with GST info
+- `products` - Product/service catalog with GST rates
+- `invoices` - Invoice records with GST calculations
+- `invoice_items` - Line items for invoices
+- `expenses` - Expense tracking
+- `contacts` - Contact form submissions
 
 ## API Endpoints
 
-### Backend (FastAPI)
-- `GET /api/` - Health check
-- `GET /api/health` - Status check
+### Authentication
+- `POST /api/auth/signup` - Register new user
+- `POST /api/auth/login` - Login, returns JWT token
+- `GET /api/auth/me` - Get current user
+
+### Business
+- `GET /api/business` - Get business profile
+- `POST /api/business` - Create business profile
+- `PUT /api/business` - Update business profile
+
+### Customers
+- `GET /api/customers` - List all customers
+- `POST /api/customers` - Create customer
+- `PUT /api/customers/{id}` - Update customer
+- `DELETE /api/customers/{id}` - Delete customer
+
+### Products
+- `GET /api/products` - List all products
+- `POST /api/products` - Create product
+- `PUT /api/products/{id}` - Update product
+- `DELETE /api/products/{id}` - Delete product
+
+### Invoices
+- `GET /api/invoices` - List all invoices
+- `GET /api/invoices/{id}` - Get single invoice
+- `GET /api/invoices/next-number/get` - Get next invoice number
+- `POST /api/invoices` - Create invoice
+- `PUT /api/invoices/{id}/payment` - Update payment status
+
+### Expenses
+- `GET /api/expenses` - List all expenses
+- `POST /api/expenses` - Create expense
+- `PUT /api/expenses/{id}` - Update expense
+- `DELETE /api/expenses/{id}` - Delete expense
+
+### Dashboard & Ledger
+- `GET /api/dashboard/stats` - Get dashboard statistics
+- `GET /api/ledger` - Get ledger data
+
+### Public
+- `GET /api/` - API info
+- `GET /api/health` - Health check
 - `POST /api/contact` - Contact form submission
-- `GET /api/contacts` - List contacts (admin)
 
-### Frontend (Supabase)
-All data operations through Supabase client library.
-
-## Important Notes
-
-### Email Confirmation Required
-To use the admin portal, the user must:
-1. Check email (dhruvk99999@gmail.com) for Supabase confirmation
-2. Click the confirmation link
-3. Then sign in at /admin
-
-### Database Setup
-The SQL schema file is at `/app/frontend/src/lib/schema.sql`
-Tables and RLS policies should already be created in Supabase.
+## Testing Status (January 16, 2026)
+- ✅ All 27 backend API tests passed (100%)
+- ✅ All frontend UI tests passed
+- ✅ Authentication flow verified
+- ✅ CRUD operations verified for all entities
+- ✅ GST calculations verified (CGST/SGST and IGST)
+- Test file: `/app/tests/test_gst_api.py`
 
 ## Prioritized Backlog
 
-### P0 (Critical) - DONE
+### P0 (Critical) ✅ DONE
 - [x] Public website with all sections
-- [x] Admin login page
-- [x] Invoice management system
+- [x] Admin authentication (JWT)
+- [x] Invoice management system with MongoDB
 
-### P1 (High Priority) - User Action Required
-- [ ] Confirm email to activate admin account
-- [ ] Set up business profile in Settings
+### P1 (High Priority) - Upcoming
+- [ ] Super-admin feature for cross-user data visibility
+- [ ] "Remember Me" option for 30-day JWT sessions
+- [ ] CSV export for invoices and customers
 
 ### P2 (Medium Priority) - Future
-- [ ] Email notifications for new leads
-- [ ] Blog section
-- [ ] Client testimonials carousel
-- [ ] Case studies/portfolio
-- [ ] WhatsApp invoice sharing
+- [ ] Email invoices to customers
+- [ ] Payment gateway integration (Razorpay/Stripe)
+- [ ] Recurring invoices
+- [ ] Tax reports (GSTR-1, GSTR-3B)
+- [ ] Dashboard chart visualizations
 
 ### P3 (Low Priority) - Future
-- [ ] Recurring invoices
-- [ ] Payment gateway integration
 - [ ] Multi-language support
-- [ ] Tax reports export
+- [ ] WhatsApp invoice sharing
+- [ ] Blog section
+- [ ] Client testimonials
+- [ ] Case studies/portfolio
 
-## Next Tasks
-1. Confirm email to activate admin account
-2. Set up business profile with GSTIN
-3. Add customers and products
-4. Create first invoice
+## Architecture
+
+```
+/app/
+├── backend/
+│   ├── server.py          # FastAPI with JWT auth & all CRUD endpoints
+│   ├── requirements.txt
+│   └── .env               # MONGO_URL, DB_NAME, JWT_SECRET_KEY
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── AdminLayout.jsx
+│   │   │   └── ProtectedRoute.jsx
+│   │   ├── contexts/
+│   │   │   └── AuthContext.js     # JWT auth state management
+│   │   ├── pages/
+│   │   │   ├── admin/            # All admin pages
+│   │   │   └── HomePage.jsx      # Corporate website
+│   │   ├── services/
+│   │   │   └── api.js            # API wrapper with token handling
+│   │   └── App.js
+│   └── .env                      # REACT_APP_BACKEND_URL
+└── tests/
+    └── test_gst_api.py           # Comprehensive API tests
+```
+
+## Migration Notes (Supabase → MongoDB)
+The invoice management system was migrated from Supabase to MongoDB on January 16, 2026:
+- Removed external Supabase dependency
+- Implemented custom JWT authentication
+- All data now stored in MongoDB
+- User data isolation enforced via user_id field in all collections
+- Deleted obsolete files: `supabaseClient.js`, `schema.sql`

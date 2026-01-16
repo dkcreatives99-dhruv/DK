@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { getCustomers, getProducts, getBusiness, getNextInvoiceNumber, createInvoice } from '@/services/api';
+import { customersAPI, productsAPI, businessAPI, invoicesAPI } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +9,6 @@ import { toast } from 'sonner';
 import { Plus, Trash2, ArrowLeft, Save } from 'lucide-react';
 
 const CreateInvoice = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -33,21 +31,20 @@ const CreateInvoice = () => {
 
   useEffect(() => {
     fetchData();
-  }, [user]);
+  }, []);
 
   const fetchData = async () => {
-    if (!user) return;
     try {
-      const [customersRes, productsRes, businessRes, invoiceNumRes] = await Promise.all([
-        getCustomers(user.id),
-        getProducts(user.id),
-        getBusiness(user.id),
-        getNextInvoiceNumber(user.id)
+      const [customersData, productsData, businessData, invoiceNumData] = await Promise.all([
+        customersAPI.getAll(),
+        productsAPI.getAll(),
+        businessAPI.get(),
+        invoicesAPI.getNextNumber()
       ]);
-      setCustomers(customersRes.data || []);
-      setProducts(productsRes.data || []);
-      setBusiness(businessRes.data);
-      setInvoiceNumber(invoiceNumRes.number);
+      setCustomers(customersData || []);
+      setProducts(productsData || []);
+      setBusiness(businessData);
+      setInvoiceNumber(invoiceNumData?.invoice_number || 'INV-00001');
     } catch (error) {
       toast.error('Failed to load data');
     } finally {
@@ -108,7 +105,7 @@ const CreateInvoice = () => {
 
   // Determine GST type based on states
   const selectedCustomer = customers.find(c => c.id === formData.customer_id);
-  const isInterState = selectedCustomer && business && selectedCustomer.state !== business.state;
+  const isInterState = selectedCustomer && business && selectedCustomer.state && business.state && selectedCustomer.state !== business.state;
   
   const cgst = isInterState ? 0 : adjustedGst / 2;
   const sgst = isInterState ? 0 : adjustedGst / 2;
@@ -135,25 +132,6 @@ const CreateInvoice = () => {
 
     setSaving(true);
     try {
-      const invoiceData = {
-        user_id: user.id,
-        invoice_number: invoiceNumber,
-        invoice_date: formData.invoice_date,
-        customer_id: formData.customer_id,
-        subtotal: subtotal,
-        discount_type: formData.discount_type || null,
-        discount_value: parseFloat(formData.discount_value) || 0,
-        discount_amount: discountAmount,
-        subtotal_after_discount: subtotalAfterDiscount,
-        cgst: cgst,
-        sgst: sgst,
-        igst: igst,
-        total_gst: adjustedGst,
-        total_amount: totalAmount,
-        payment_status: 'unpaid',
-        notes: formData.notes
-      };
-
       const invoiceItems = items.map(item => ({
         product_id: item.product_id || null,
         product_name: item.product_name,
@@ -168,13 +146,20 @@ const CreateInvoice = () => {
         total: calculateItemTotal(item)
       }));
 
-      const { data, error } = await createInvoice(invoiceData, invoiceItems);
-      if (error) throw error;
-      
+      const invoiceData = {
+        customer_id: formData.customer_id,
+        invoice_date: formData.invoice_date,
+        discount_type: formData.discount_type || null,
+        discount_value: parseFloat(formData.discount_value) || 0,
+        notes: formData.notes,
+        items: invoiceItems
+      };
+
+      const data = await invoicesAPI.create(invoiceData);
       toast.success('Invoice created successfully');
       navigate(`/admin/invoices/${data.id}`);
     } catch (error) {
-      toast.error(error.message || 'Failed to create invoice');
+      toast.error(error.response?.data?.detail || 'Failed to create invoice');
     } finally {
       setSaving(false);
     }

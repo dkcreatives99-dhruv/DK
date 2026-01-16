@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { getInvoice, getBusiness, updateInvoicePayment } from '@/services/api';
+import { invoicesAPI, businessAPI } from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -45,7 +44,6 @@ const numberToWords = (num) => {
 const ViewInvoice = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const invoiceRef = useRef(null);
   
   const [invoice, setInvoice] = useState(null);
@@ -60,18 +58,17 @@ const ViewInvoice = () => {
 
   useEffect(() => {
     fetchData();
-  }, [id, user]);
+  }, [id]);
 
   const fetchData = async () => {
     try {
-      const [invoiceRes, businessRes] = await Promise.all([
-        getInvoice(id),
-        getBusiness(user.id)
+      const [invoiceData, businessData] = await Promise.all([
+        invoicesAPI.getOne(id),
+        businessAPI.get()
       ]);
       
-      if (invoiceRes.error) throw invoiceRes.error;
-      setInvoice(invoiceRes.data);
-      setBusiness(businessRes.data);
+      setInvoice(invoiceData);
+      setBusiness(businessData);
     } catch (error) {
       toast.error('Failed to load invoice');
       navigate('/admin/invoices');
@@ -82,8 +79,7 @@ const ViewInvoice = () => {
 
   const handleUpdatePayment = async () => {
     try {
-      const { error } = await updateInvoicePayment(id, paymentData);
-      if (error) throw error;
+      await invoicesAPI.updatePayment(id, paymentData);
       toast.success('Payment status updated');
       setPaymentDialogOpen(false);
       fetchData();
@@ -209,12 +205,12 @@ const ViewInvoice = () => {
           {/* Bill To */}
           <div className="mb-8 p-4 bg-slate-50 rounded-lg">
             <h4 className="text-xs font-semibold text-slate-500 uppercase mb-2">Bill To</h4>
-            <p className="font-semibold text-slate-900">{invoice.customers?.name}</p>
+            <p className="font-semibold text-slate-900">{invoice.customer?.name}</p>
             <div className="text-sm text-slate-600 mt-1 space-y-0.5">
-              {invoice.customers?.address && <p>{invoice.customers.address}</p>}
-              <p>{invoice.customers?.city}, {invoice.customers?.state} {invoice.customers?.pincode}</p>
-              {invoice.customers?.gstin && <p className="font-medium">GSTIN: {invoice.customers.gstin}</p>}
-              {invoice.customers?.phone && <p>Phone: {invoice.customers.phone}</p>}
+              {invoice.customer?.address && <p>{invoice.customer.address}</p>}
+              <p>{invoice.customer?.city}, {invoice.customer?.state} {invoice.customer?.pincode}</p>
+              {invoice.customer?.gstin && <p className="font-medium">GSTIN: {invoice.customer.gstin}</p>}
+              {invoice.customer?.phone && <p>Phone: {invoice.customer.phone}</p>}
             </div>
           </div>
 
@@ -233,8 +229,8 @@ const ViewInvoice = () => {
                 </tr>
               </thead>
               <tbody>
-                {(invoice.invoice_items || []).map((item, index) => (
-                  <tr key={item.id} className="border-b border-slate-100">
+                {(invoice.items || []).map((item, index) => (
+                  <tr key={item.id || index} className="border-b border-slate-100">
                     <td className="px-4 py-3 text-sm">{index + 1}</td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-slate-900">{item.product_name}</p>

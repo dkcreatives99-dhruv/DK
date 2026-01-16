@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { getInvoices } from '@/services/api';
+import { invoicesAPI } from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Plus, Eye, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 const AdminInvoices = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
   const [filteredInvoices, setFilteredInvoices] = useState([]);
@@ -18,17 +16,15 @@ const AdminInvoices = () => {
 
   useEffect(() => {
     fetchInvoices();
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     filterInvoices();
   }, [invoices, searchTerm, statusFilter]);
 
   const fetchInvoices = async () => {
-    if (!user) return;
     try {
-      const { data, error } = await getInvoices(user.id);
-      if (error) throw error;
+      const data = await invoicesAPI.getAll();
       setInvoices(data || []);
     } catch (error) {
       console.error('Failed to load invoices:', error);
@@ -44,7 +40,7 @@ const AdminInvoices = () => {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(inv => 
         inv.invoice_number.toLowerCase().includes(term) ||
-        inv.customers?.name?.toLowerCase().includes(term)
+        inv.customer?.name?.toLowerCase().includes(term)
       );
     }
     
@@ -163,7 +159,7 @@ const AdminInvoices = () => {
                         {formatDate(invoice.invoice_date)}
                       </td>
                       <td className="px-6 py-4 font-manrope text-slate-900">
-                        {invoice.customers?.name || 'N/A'}
+                        {invoice.customer?.name || 'N/A'}
                       </td>
                       <td className="px-6 py-4 font-manrope font-semibold text-slate-900 text-right">
                         {formatCurrency(invoice.total_amount)}

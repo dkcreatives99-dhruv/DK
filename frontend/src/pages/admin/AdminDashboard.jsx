@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getDashboardStats, getInvoices } from '@/services/api';
+import { dashboardAPI, invoicesAPI } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -17,26 +17,24 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
-      
-      try {
-        const [statsData, invoicesRes] = await Promise.all([
-          getDashboardStats(user.id),
-          getInvoices(user.id)
-        ]);
-        
-        setStats(statsData);
-        setRecentInvoices((invoicesRes.data || []).slice(0, 5));
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
-  }, [user]);
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const [statsData, invoicesData] = await Promise.all([
+        dashboardAPI.getStats(),
+        invoicesAPI.getAll()
+      ]);
+      
+      setStats(statsData);
+      setRecentInvoices((invoicesData || []).slice(0, 5));
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -90,7 +88,7 @@ const AdminDashboard = () => {
         <div>
           <h1 className="text-2xl font-syne font-bold text-slate-900">Dashboard</h1>
           <p className="text-slate-500 font-manrope text-sm mt-1">
-            Welcome back! Here&apos;s your business overview.
+            Welcome back, {user?.name || 'User'}! Here&apos;s your business overview.
           </p>
         </div>
         <Button
@@ -222,7 +220,7 @@ const AdminDashboard = () => {
                         {formatDate(invoice.invoice_date)}
                       </td>
                       <td className="px-6 py-4 font-manrope text-slate-600 text-sm">
-                        {invoice.customers?.name || 'N/A'}
+                        {invoice.customer?.name || 'N/A'}
                       </td>
                       <td className="px-6 py-4 font-manrope font-semibold text-slate-900 text-right">
                         {formatCurrency(invoice.total_amount)}

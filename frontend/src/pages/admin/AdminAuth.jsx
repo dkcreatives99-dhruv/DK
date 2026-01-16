@@ -4,12 +4,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, User } from 'lucide-react';
 
 const AdminAuth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signIn, signUp } = useAuth();
@@ -29,12 +30,17 @@ const AdminAuth = () => {
           navigate('/admin/dashboard');
         }
       } else {
-        const { error } = await signUp(email, password);
+        if (!name.trim()) {
+          toast.error('Please enter your name');
+          setLoading(false);
+          return;
+        }
+        const { error } = await signUp(email, password, name);
         if (error) {
           toast.error(error.message || 'Failed to create account');
         } else {
-          toast.success('Account created! You can now sign in.');
-          setIsLogin(true);
+          toast.success('Account created successfully!');
+          navigate('/admin/dashboard');
         }
       }
     } catch (error) {
@@ -80,6 +86,27 @@ const AdminAuth = () => {
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Name (only for signup) */}
+            {!isLogin && (
+              <div>
+                <label className="block text-slate-300 font-manrope text-sm mb-2">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                  <Input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required={!isLogin}
+                    placeholder="Your name"
+                    className="pl-12 bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl h-12 focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                    data-testid="auth-name-input"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Email */}
             <div>
               <label className="block text-slate-300 font-manrope text-sm mb-2">
@@ -112,6 +139,7 @@ const AdminAuth = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="••••••••"
+                  minLength={6}
                   className="pl-12 pr-12 bg-white/5 border-white/10 text-white placeholder:text-slate-500 rounded-xl h-12 focus:ring-2 focus:ring-primary/50 focus:border-primary"
                   data-testid="auth-password-input"
                 />
@@ -152,7 +180,10 @@ const AdminAuth = () => {
               {isLogin ? "Don't have an account?" : "Already have an account?"}
               <button
                 type="button"
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setName('');
+                }}
                 className="text-primary hover:text-primary-hover ml-2 font-semibold"
                 data-testid="auth-toggle-button"
               >

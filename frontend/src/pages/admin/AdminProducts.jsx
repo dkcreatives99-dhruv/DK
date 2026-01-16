@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { getProducts, createProduct, updateProduct, deleteProduct } from '@/services/api';
+import { productsAPI } from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +11,6 @@ const UNITS = ['Nos', 'Hours', 'Days', 'Kg', 'Grams', 'Liters', 'Meters', 'Sq.ft
 const GST_RATES = [0, 5, 12, 18, 28];
 
 const AdminProducts = () => {
-  const { user } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -23,13 +21,11 @@ const AdminProducts = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [user]);
+  }, []);
 
   const fetchProducts = async () => {
-    if (!user) return;
     try {
-      const { data, error } = await getProducts(user.id);
-      if (error) throw error;
+      const data = await productsAPI.getAll();
       setProducts(data || []);
     } catch (error) {
       toast.error('Failed to load products');
@@ -61,26 +57,23 @@ const AdminProducts = () => {
     try {
       const data = { ...formData, price: parseFloat(formData.price), gst_rate: parseFloat(formData.gst_rate) };
       if (editingProduct) {
-        const { error } = await updateProduct(editingProduct.id, data);
-        if (error) throw error;
+        await productsAPI.update(editingProduct.id, data);
         toast.success('Product updated successfully');
       } else {
-        const { error } = await createProduct({ ...data, user_id: user.id });
-        if (error) throw error;
+        await productsAPI.create(data);
         toast.success('Product created successfully');
       }
       setIsDialogOpen(false);
       fetchProducts();
     } catch (error) {
-      toast.error(error.message || 'Failed to save product');
+      toast.error(error.response?.data?.detail || 'Failed to save product');
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
     try {
-      const { error } = await deleteProduct(id);
-      if (error) throw error;
+      await productsAPI.delete(id);
       toast.success('Product deleted');
       fetchProducts();
     } catch (error) {

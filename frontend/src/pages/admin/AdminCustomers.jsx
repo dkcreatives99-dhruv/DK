@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '@/services/api';
+import { customersAPI } from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, User, MapPin, Phone, Mail, Building2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, User, MapPin, Phone, Mail } from 'lucide-react';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat',
@@ -17,7 +16,6 @@ const INDIAN_STATES = [
 ];
 
 const AdminCustomers = () => {
-  const { user } = useAuth();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -29,13 +27,11 @@ const AdminCustomers = () => {
 
   useEffect(() => {
     fetchCustomers();
-  }, [user]);
+  }, []);
 
   const fetchCustomers = async () => {
-    if (!user) return;
     try {
-      const { data, error } = await getCustomers(user.id);
-      if (error) throw error;
+      const data = await customersAPI.getAll();
       setCustomers(data || []);
     } catch (error) {
       toast.error('Failed to load customers');
@@ -68,26 +64,23 @@ const AdminCustomers = () => {
     e.preventDefault();
     try {
       if (editingCustomer) {
-        const { error } = await updateCustomer(editingCustomer.id, formData);
-        if (error) throw error;
+        await customersAPI.update(editingCustomer.id, formData);
         toast.success('Customer updated successfully');
       } else {
-        const { error } = await createCustomer({ ...formData, user_id: user.id });
-        if (error) throw error;
+        await customersAPI.create(formData);
         toast.success('Customer created successfully');
       }
       setIsDialogOpen(false);
       fetchCustomers();
     } catch (error) {
-      toast.error(error.message || 'Failed to save customer');
+      toast.error(error.response?.data?.detail || 'Failed to save customer');
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this customer?')) return;
     try {
-      const { error } = await deleteCustomer(id);
-      if (error) throw error;
+      await customersAPI.delete(id);
       toast.success('Customer deleted');
       fetchCustomers();
     } catch (error) {

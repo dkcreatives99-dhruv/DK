@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { authAPI } from '@/services/api';
 
 const AuthContext = createContext({});
 
@@ -14,58 +14,77 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [session, setSession] = useState(null);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    // Check for existing token on mount
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    
+    if (token && storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+        // Verify token is still valid
+        authAPI.getMe()
+          .then((userData) => {
+            setUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
+          })
+          .catch(() => {
+            // Token invalid, clear storage
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setUser(null);
+          })
+          .finally(() => setLoading(false));
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setLoading(false);
       }
-    );
-
-    return () => {
-      subscription?.unsubscribe();
-    };
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { data, error };
+    try {
+      const response = await authAPI.login(email, password);
+      localStorage.setItem('token', response.access_token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      setUser(response.user);
+      return { data: response, error: null };
+    } catch (error) {
+      return { 
+        data: null, 
+        error: { message: error.response?.data?.detail || 'Invalid email or password' }
+      };
+    }
   };
 
-  const signUp = async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    return { data, error };
+  const signUp = async (email, password, name) => {
+    try {
+      const response = await authAPI.signup(email, password, name);
+      localStorage.setItem('token', response.access_token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      setUser(response.user);
+      return { data: response, error: null };
+    } catch (error) {
+      return { 
+        data: null, 
+        error: { message: error.response?.data?.detail || 'Failed to create account' }
+      };
+    }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (!error) {
-      setUser(null);
-      setSession(null);
-    }
-    return { error };
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    return { error: null };
   };
 
   const value = {
     user,
-    session,
     loading,
     signIn,
     signUp,

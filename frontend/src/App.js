@@ -15,6 +15,7 @@ import CreateInvoice from "@/pages/admin/CreateInvoice";
 import ViewInvoice from "@/pages/admin/ViewInvoice";
 import AdminCustomers from "@/pages/admin/AdminCustomers";
 import AdminProducts from "@/pages/admin/AdminProducts";
+import AdminIncome from "@/pages/admin/AdminIncome";
 import AdminExpenses from "@/pages/admin/AdminExpenses";
 import AdminLedger from "@/pages/admin/AdminLedger";
 import AdminSettings from "@/pages/admin/AdminSettings";

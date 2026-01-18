@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { 
   LayoutDashboard, FileText, Users, Package, 
-  Receipt, BookOpen, Settings, LogOut, Plus, ArrowLeft
+  Receipt, BookOpen, Settings, LogOut, Plus, ArrowLeft, IndianRupee
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -21,6 +21,7 @@ const AdminLayout = () => {
     { path: '/admin/invoices', icon: FileText, label: 'Invoices' },
     { path: '/admin/customers', icon: Users, label: 'Customers' },
     { path: '/admin/products', icon: Package, label: 'Products' },
+    { path: '/admin/income', icon: IndianRupee, label: 'Income' },
     { path: '/admin/expenses', icon: Receipt, label: 'Expenses' },
     { path: '/admin/ledger', icon: BookOpen, label: 'Ledger' },
     { path: '/admin/settings', icon: Settings, label: 'Settings' },

@@ -324,7 +324,7 @@ class ExpenseResponse(BaseModel):
     date: str
     vendor: Optional[str] = None
     description: Optional[str] = None
-    payment_mode: str
+    payment_mode: Optional[str] = None  # Optional for backward compatibility with legacy data
     bank_account_id: Optional[str] = None  # Optional for backward compatibility with legacy data
     bank_name: Optional[str] = None
     reference_number: Optional[str] = None

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -42,6 +42,13 @@ api_router = APIRouter(prefix="/api")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# ===================== CONSTANTS =====================
+
+INCOME_TYPES = ["invoice", "personal"]
+PERSONAL_INCOME_SOURCES = ["Family Support", "Personal Transfer", "Capital Infusion", "Other"]
+PAYMENT_MODES = ["Cash", "Bank Transfer", "UPI", "Cheque", "Other"]
+EXPENSE_CATEGORIES = ["Office Supplies", "Rent", "Utilities", "Travel", "Marketing", "Software", "Hardware", "Salary", "Professional Fees", "Miscellaneous", "Other"]
+
 # ===================== MODELS =====================
 
 # Auth Models
@@ -65,7 +72,7 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     user: UserResponse
 
-# Contact Model (existing - keeping for website contact form)
+# Contact Model
 class ContactSubmissionCreate(BaseModel):
     name: str
     email: EmailStr
@@ -79,14 +86,25 @@ class ContactResponse(BaseModel):
     message: str
     id: Optional[str] = None
 
-# Bank Account Model
+# Bank Account Model (Enhanced - Opening Balance Mandatory)
 class BankAccountCreate(BaseModel):
+    bank_name: str
+    account_number: str
+    ifsc_code: str
+    branch_name: Optional[str] = None
+    account_type: str = "Current"  # Current, Savings, Cash
+    is_primary: bool = False
+    opening_balance: float  # MANDATORY
+    opening_balance_date: str  # MANDATORY
+
+class BankAccountUpdate(BaseModel):
     bank_name: str
     account_number: str
     ifsc_code: str
     branch_name: Optional[str] = None
     account_type: str = "Current"
     is_primary: bool = False
+    # Opening balance NOT updatable here
 
 class BankAccountResponse(BaseModel):
     id: str
@@ -98,11 +116,13 @@ class BankAccountResponse(BaseModel):
     account_type: str
     is_primary: bool
     opening_balance: float
+    opening_balance_date: str
+    opening_balance_locked: bool
     current_balance: float
     created_at: str
     updated_at: str
 
-# Business Model (enhanced with multiple bank accounts support)
+# Business Model
 class BusinessCreate(BaseModel):
     name: str
     address: Optional[str] = None
@@ -185,7 +205,7 @@ class ProductResponse(BaseModel):
     created_at: str
     updated_at: str
 
-# Invoice Item Model (enhanced with item-level discount)
+# Invoice Item Model
 class InvoiceItemCreate(BaseModel):
     product_id: Optional[str] = None
     product_name: str
@@ -195,24 +215,24 @@ class InvoiceItemCreate(BaseModel):
     unit: str = "Nos"
     rate: float
     gst_rate: float = 18
-    discount_type: Optional[str] = None  # "percentage" or "amount"
+    discount_type: Optional[str] = None
     discount_value: float = 0
     discount_amount: float = 0
-    amount: float  # After item discount, before tax
+    amount: float
     gst_amount: float
     total: float
 
-# Invoice Model (enhanced with status and soft delete)
+# Invoice Model
 class InvoiceCreate(BaseModel):
     customer_id: str
     invoice_date: str
     due_date: Optional[str] = None
-    discount_type: Optional[str] = None  # Invoice-level discount
+    discount_type: Optional[str] = None
     discount_value: float = 0
     notes: Optional[str] = None
     terms: Optional[str] = None
     items: List[InvoiceItemCreate]
-    status: str = "issued"  # draft, issued, cancelled
+    status: str = "issued"
 
 class InvoiceResponse(BaseModel):
     id: str
@@ -236,8 +256,8 @@ class InvoiceResponse(BaseModel):
     total_amount: float
     amount_paid: float
     balance_due: float
-    payment_status: str  # unpaid, partial, paid
-    status: str  # draft, issued, cancelled
+    payment_status: str
+    status: str
     notes: Optional[str] = None
     terms: Optional[str] = None
     items: List[dict] = []
@@ -252,41 +272,48 @@ class PaymentUpdateRequest(BaseModel):
     payment_date: Optional[str] = None
     payment_method: Optional[str] = None
 
-# Income Model (NEW - for tracking actual payments)
+# Income Model (ENHANCED - Dual Type Support)
 class IncomeCreate(BaseModel):
-    invoice_id: str
+    income_type: str  # "invoice" or "personal"
+    # For invoice-linked income
+    invoice_id: Optional[str] = None
+    # For personal income
+    income_source: Optional[str] = None  # Family Support, Personal Transfer, Capital Infusion, Other
+    # Common fields
     amount: float
     payment_date: str
-    payment_mode: str  # Cash, Bank, UPI, Cheque, Other
-    bank_account_id: Optional[str] = None
+    payment_mode: str
+    bank_account_id: str  # MANDATORY - which bank received the money
     reference_number: Optional[str] = None
     remarks: Optional[str] = None
 
 class IncomeResponse(BaseModel):
     id: str
     user_id: str
-    invoice_id: str
+    income_type: str
+    invoice_id: Optional[str] = None
     invoice_number: Optional[str] = None
     customer_name: Optional[str] = None
+    income_source: Optional[str] = None
     amount: float
     payment_date: str
     payment_mode: str
-    bank_account_id: Optional[str] = None
+    bank_account_id: str
     bank_name: Optional[str] = None
     reference_number: Optional[str] = None
     remarks: Optional[str] = None
     created_at: str
     updated_at: str
 
-# Expense Model (enhanced with bank account)
+# Expense Model (ENHANCED - Mandatory Bank Account)
 class ExpenseCreate(BaseModel):
     category: str
     amount: float
     date: str
     vendor: Optional[str] = None
     description: Optional[str] = None
-    payment_method: Optional[str] = None
-    bank_account_id: Optional[str] = None
+    payment_mode: str  # Cash, Bank Transfer, UPI, etc.
+    bank_account_id: str  # MANDATORY - which bank was debited
     reference_number: Optional[str] = None
 
 class ExpenseResponse(BaseModel):
@@ -297,34 +324,41 @@ class ExpenseResponse(BaseModel):
     date: str
     vendor: Optional[str] = None
     description: Optional[str] = None
-    payment_method: Optional[str] = None
-    bank_account_id: Optional[str] = None
+    payment_mode: str
+    bank_account_id: str
     bank_name: Optional[str] = None
     reference_number: Optional[str] = None
     created_at: str
     updated_at: str
 
-# Ledger Settings Model
-class LedgerSettingsCreate(BaseModel):
-    opening_balance: float = 0
-    opening_balance_date: str
-    bank_account_id: Optional[str] = None
+# Bank Transfer Model (NEW)
+class BankTransferCreate(BaseModel):
+    from_bank_id: str
+    to_bank_id: str
+    amount: float
+    transfer_date: str
+    reference_number: Optional[str] = None
+    remarks: Optional[str] = None
 
-class LedgerSettingsResponse(BaseModel):
+class BankTransferResponse(BaseModel):
     id: str
     user_id: str
-    opening_balance: float
-    opening_balance_date: str
-    bank_account_id: Optional[str] = None
+    from_bank_id: str
+    from_bank_name: Optional[str] = None
+    to_bank_id: str
+    to_bank_name: Optional[str] = None
+    amount: float
+    transfer_date: str
+    reference_number: Optional[str] = None
+    remarks: Optional[str] = None
     created_at: str
-    updated_at: str
 
 # Audit Log Model
 class AuditLogResponse(BaseModel):
     id: str
     user_id: str
-    action: str  # create, update, delete, restore
-    entity_type: str  # invoice, income, expense, customer, product
+    action: str
+    entity_type: str
     entity_id: str
     details: Optional[dict] = None
     created_at: str
@@ -385,8 +419,12 @@ async def update_invoice_payment_status(invoice_id: str, user_id: str):
     if not invoice:
         return
     
-    # Get total income for this invoice
-    income_entries = await db.income.find({"invoice_id": invoice_id, "user_id": user_id}, {"_id": 0}).to_list(1000)
+    # Get total income for this invoice (only invoice-linked income)
+    income_entries = await db.income.find({
+        "invoice_id": invoice_id, 
+        "user_id": user_id,
+        "income_type": "invoice"
+    }, {"_id": 0}).to_list(1000)
     total_paid = sum(entry["amount"] for entry in income_entries)
     
     # Determine payment status
@@ -408,6 +446,32 @@ async def update_invoice_payment_status(invoice_id: str, user_id: str):
         }}
     )
 
+async def calculate_bank_balance(bank_id: str, user_id: str) -> float:
+    """Calculate current balance for a bank account"""
+    bank = await db.bank_accounts.find_one({"id": bank_id, "user_id": user_id}, {"_id": 0})
+    if not bank:
+        return 0
+    
+    opening_balance = bank.get("opening_balance", 0)
+    
+    # Get all income credited to this bank
+    income_entries = await db.income.find({"bank_account_id": bank_id, "user_id": user_id}, {"_id": 0}).to_list(10000)
+    total_income = sum(entry["amount"] for entry in income_entries)
+    
+    # Get all expenses debited from this bank
+    expense_entries = await db.expenses.find({"bank_account_id": bank_id, "user_id": user_id}, {"_id": 0}).to_list(10000)
+    total_expenses = sum(entry["amount"] for entry in expense_entries)
+    
+    # Get transfers in and out
+    transfers_in = await db.bank_transfers.find({"to_bank_id": bank_id, "user_id": user_id}, {"_id": 0}).to_list(10000)
+    total_transfers_in = sum(t["amount"] for t in transfers_in)
+    
+    transfers_out = await db.bank_transfers.find({"from_bank_id": bank_id, "user_id": user_id}, {"_id": 0}).to_list(10000)
+    total_transfers_out = sum(t["amount"] for t in transfers_out)
+    
+    current_balance = opening_balance + total_income - total_expenses + total_transfers_in - total_transfers_out
+    return round(current_balance, 2)
+
 # ===================== PUBLIC ENDPOINTS =====================
 
 @api_router.get("/")
@@ -418,7 +482,6 @@ async def root():
 async def health_check():
     return {"status": "healthy", "timestamp": get_timestamp()}
 
-# Contact form (public - for website visitors)
 @api_router.post("/contact", response_model=ContactResponse)
 async def submit_contact(input: ContactSubmissionCreate):
     try:
@@ -441,12 +504,10 @@ async def submit_contact(input: ContactSubmissionCreate):
 
 @api_router.post("/auth/signup", response_model=TokenResponse)
 async def signup(user_data: UserCreate):
-    # Check if user exists
     existing_user = await db.users.find_one({"email": user_data.email.lower()})
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Create user
     user_id = str(uuid.uuid4())
     user_doc = {
         "id": user_id,
@@ -458,7 +519,6 @@ async def signup(user_data: UserCreate):
     }
     await db.users.insert_one(user_doc)
     
-    # Create token
     access_token = create_access_token(data={"sub": user_id, "email": user_doc["email"]})
     
     return TokenResponse(
@@ -532,12 +592,11 @@ async def update_business(data: BusinessCreate, current_user: dict = Depends(get
         return_document=True
     )
     if not result:
-        # Create new if doesn't exist
         return await create_business(data, current_user)
     del result["_id"]
     return BusinessResponse(**result)
 
-# ===================== BANK ACCOUNT ENDPOINTS =====================
+# ===================== BANK ACCOUNT ENDPOINTS (ENHANCED) =====================
 
 @api_router.get("/bank-accounts", response_model=List[BankAccountResponse])
 async def get_bank_accounts(current_user: dict = Depends(get_current_user)):
@@ -545,10 +604,38 @@ async def get_bank_accounts(current_user: dict = Depends(get_current_user)):
         {"user_id": current_user["id"]}, 
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
-    return [BankAccountResponse(**a) for a in accounts]
+    
+    # Calculate current balance for each account
+    result = []
+    for a in accounts:
+        current_balance = await calculate_bank_balance(a["id"], current_user["id"])
+        a["current_balance"] = current_balance
+        a.setdefault("opening_balance_locked", True)
+        a.setdefault("opening_balance_date", a.get("created_at", "")[:10])
+        result.append(BankAccountResponse(**a))
+    
+    return result
+
+@api_router.get("/bank-accounts/{account_id}", response_model=BankAccountResponse)
+async def get_bank_account(account_id: str, current_user: dict = Depends(get_current_user)):
+    account = await db.bank_accounts.find_one({"id": account_id, "user_id": current_user["id"]}, {"_id": 0})
+    if not account:
+        raise HTTPException(status_code=404, detail="Bank account not found")
+    
+    account["current_balance"] = await calculate_bank_balance(account_id, current_user["id"])
+    account.setdefault("opening_balance_locked", True)
+    account.setdefault("opening_balance_date", account.get("created_at", "")[:10])
+    return BankAccountResponse(**account)
 
 @api_router.post("/bank-accounts", response_model=BankAccountResponse)
 async def create_bank_account(data: BankAccountCreate, current_user: dict = Depends(get_current_user)):
+    # Validate opening balance is provided
+    if data.opening_balance is None:
+        raise HTTPException(status_code=400, detail="Opening balance is mandatory")
+    
+    if not data.opening_balance_date:
+        raise HTTPException(status_code=400, detail="Opening balance date is mandatory")
+    
     # If this is set as primary, unset other primary accounts
     if data.is_primary:
         await db.bank_accounts.update_many(
@@ -559,9 +646,15 @@ async def create_bank_account(data: BankAccountCreate, current_user: dict = Depe
     account_doc = {
         "id": str(uuid.uuid4()),
         "user_id": current_user["id"],
-        **data.model_dump(),
-        "opening_balance": 0,
-        "current_balance": 0,
+        "bank_name": data.bank_name,
+        "account_number": data.account_number,
+        "ifsc_code": data.ifsc_code,
+        "branch_name": data.branch_name,
+        "account_type": data.account_type,
+        "is_primary": data.is_primary,
+        "opening_balance": data.opening_balance,
+        "opening_balance_date": data.opening_balance_date,
+        "opening_balance_locked": True,  # Locked immediately after creation
         "created_at": get_timestamp(),
         "updated_at": get_timestamp()
     }
@@ -569,12 +662,13 @@ async def create_bank_account(data: BankAccountCreate, current_user: dict = Depe
     del account_doc["_id"]
     
     await create_audit_log(current_user["id"], "create", "bank_account", account_doc["id"], 
-                          {"bank_name": data.bank_name})
+                          {"bank_name": data.bank_name, "opening_balance": data.opening_balance})
     
+    account_doc["current_balance"] = data.opening_balance
     return BankAccountResponse(**account_doc)
 
 @api_router.put("/bank-accounts/{account_id}", response_model=BankAccountResponse)
-async def update_bank_account(account_id: str, data: BankAccountCreate, current_user: dict = Depends(get_current_user)):
+async def update_bank_account(account_id: str, data: BankAccountUpdate, current_user: dict = Depends(get_current_user)):
     # If this is set as primary, unset other primary accounts
     if data.is_primary:
         await db.bank_accounts.update_many(
@@ -582,34 +676,73 @@ async def update_bank_account(account_id: str, data: BankAccountCreate, current_
             {"$set": {"is_primary": False}}
         )
     
+    # Don't update opening balance - it's locked
+    update_data = {
+        "bank_name": data.bank_name,
+        "account_number": data.account_number,
+        "ifsc_code": data.ifsc_code,
+        "branch_name": data.branch_name,
+        "account_type": data.account_type,
+        "is_primary": data.is_primary,
+        "updated_at": get_timestamp()
+    }
+    
     result = await db.bank_accounts.find_one_and_update(
         {"id": account_id, "user_id": current_user["id"]},
-        {"$set": {**data.model_dump(), "updated_at": get_timestamp()}},
+        {"$set": update_data},
         return_document=True
     )
     if not result:
         raise HTTPException(status_code=404, detail="Bank account not found")
     del result["_id"]
+    
+    result["current_balance"] = await calculate_bank_balance(account_id, current_user["id"])
     return BankAccountResponse(**result)
 
 @api_router.put("/bank-accounts/{account_id}/opening-balance")
-async def set_opening_balance(account_id: str, opening_balance: float, current_user: dict = Depends(get_current_user)):
+async def update_opening_balance(account_id: str, opening_balance: float, reason: str = Query(..., description="Reason for correction"), current_user: dict = Depends(get_current_user)):
+    """Admin-only correction for opening balance - requires reason for audit"""
+    account = await db.bank_accounts.find_one({"id": account_id, "user_id": current_user["id"]}, {"_id": 0})
+    if not account:
+        raise HTTPException(status_code=404, detail="Bank account not found")
+    
+    old_balance = account.get("opening_balance", 0)
+    
     result = await db.bank_accounts.find_one_and_update(
         {"id": account_id, "user_id": current_user["id"]},
         {"$set": {"opening_balance": opening_balance, "updated_at": get_timestamp()}},
         return_document=True
     )
-    if not result:
-        raise HTTPException(status_code=404, detail="Bank account not found")
-    return {"success": True, "message": "Opening balance updated"}
+    
+    # Create audit log for this sensitive operation
+    await create_audit_log(
+        current_user["id"], 
+        "update_opening_balance", 
+        "bank_account", 
+        account_id,
+        {
+            "old_balance": old_balance,
+            "new_balance": opening_balance,
+            "reason": reason,
+            "bank_name": account.get("bank_name")
+        }
+    )
+    
+    return {"success": True, "message": "Opening balance updated", "old_balance": old_balance, "new_balance": opening_balance}
 
 @api_router.delete("/bank-accounts/{account_id}")
 async def delete_bank_account(account_id: str, current_user: dict = Depends(get_current_user)):
     # Check if account has transactions
     income_count = await db.income.count_documents({"bank_account_id": account_id, "user_id": current_user["id"]})
     expense_count = await db.expenses.count_documents({"bank_account_id": account_id, "user_id": current_user["id"]})
+    transfer_count = await db.bank_transfers.count_documents({
+        "$or": [
+            {"from_bank_id": account_id, "user_id": current_user["id"]},
+            {"to_bank_id": account_id, "user_id": current_user["id"]}
+        ]
+    })
     
-    if income_count > 0 or expense_count > 0:
+    if income_count > 0 or expense_count > 0 or transfer_count > 0:
         raise HTTPException(status_code=400, detail="Cannot delete bank account with existing transactions")
     
     result = await db.bank_accounts.delete_one({"id": account_id, "user_id": current_user["id"]})
@@ -617,6 +750,74 @@ async def delete_bank_account(account_id: str, current_user: dict = Depends(get_
         raise HTTPException(status_code=404, detail="Bank account not found")
     
     return {"success": True, "message": "Bank account deleted"}
+
+# ===================== BANK TRANSFER ENDPOINTS (NEW) =====================
+
+@api_router.get("/bank-transfers", response_model=List[BankTransferResponse])
+async def get_bank_transfers(current_user: dict = Depends(get_current_user)):
+    transfers = await db.bank_transfers.find(
+        {"user_id": current_user["id"]}, 
+        {"_id": 0}
+    ).sort("transfer_date", -1).to_list(1000)
+    
+    # Enrich with bank names
+    for t in transfers:
+        if t.get("from_bank_id"):
+            from_bank = await db.bank_accounts.find_one({"id": t["from_bank_id"]}, {"_id": 0, "bank_name": 1})
+            t["from_bank_name"] = from_bank.get("bank_name") if from_bank else None
+        if t.get("to_bank_id"):
+            to_bank = await db.bank_accounts.find_one({"id": t["to_bank_id"]}, {"_id": 0, "bank_name": 1})
+            t["to_bank_name"] = to_bank.get("bank_name") if to_bank else None
+    
+    return [BankTransferResponse(**t) for t in transfers]
+
+@api_router.post("/bank-transfers", response_model=BankTransferResponse)
+async def create_bank_transfer(data: BankTransferCreate, current_user: dict = Depends(get_current_user)):
+    # Validate both banks exist
+    from_bank = await db.bank_accounts.find_one({"id": data.from_bank_id, "user_id": current_user["id"]}, {"_id": 0})
+    if not from_bank:
+        raise HTTPException(status_code=404, detail="Source bank account not found")
+    
+    to_bank = await db.bank_accounts.find_one({"id": data.to_bank_id, "user_id": current_user["id"]}, {"_id": 0})
+    if not to_bank:
+        raise HTTPException(status_code=404, detail="Destination bank account not found")
+    
+    if data.from_bank_id == data.to_bank_id:
+        raise HTTPException(status_code=400, detail="Cannot transfer to the same account")
+    
+    # Check sufficient balance
+    from_balance = await calculate_bank_balance(data.from_bank_id, current_user["id"])
+    if from_balance < data.amount:
+        raise HTTPException(status_code=400, detail=f"Insufficient balance. Available: ₹{from_balance:.2f}")
+    
+    transfer_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": current_user["id"],
+        **data.model_dump(),
+        "created_at": get_timestamp()
+    }
+    await db.bank_transfers.insert_one(transfer_doc)
+    del transfer_doc["_id"]
+    
+    await create_audit_log(current_user["id"], "create", "bank_transfer", transfer_doc["id"],
+                          {"from_bank": from_bank.get("bank_name"), "to_bank": to_bank.get("bank_name"), "amount": data.amount})
+    
+    transfer_doc["from_bank_name"] = from_bank.get("bank_name")
+    transfer_doc["to_bank_name"] = to_bank.get("bank_name")
+    return BankTransferResponse(**transfer_doc)
+
+@api_router.delete("/bank-transfers/{transfer_id}")
+async def delete_bank_transfer(transfer_id: str, current_user: dict = Depends(get_current_user)):
+    transfer = await db.bank_transfers.find_one({"id": transfer_id, "user_id": current_user["id"]}, {"_id": 0})
+    if not transfer:
+        raise HTTPException(status_code=404, detail="Transfer not found")
+    
+    result = await db.bank_transfers.delete_one({"id": transfer_id, "user_id": current_user["id"]})
+    
+    await create_audit_log(current_user["id"], "delete", "bank_transfer", transfer_id,
+                          {"amount": transfer.get("amount")})
+    
+    return {"success": True, "message": "Transfer deleted"}
 
 # ===================== CUSTOMER ENDPOINTS =====================
 
@@ -640,9 +841,7 @@ async def create_customer(data: CustomerCreate, current_user: dict = Depends(get
     await db.customers.insert_one(customer_doc)
     del customer_doc["_id"]
     
-    await create_audit_log(current_user["id"], "create", "customer", customer_doc["id"],
-                          {"name": data.name})
-    
+    await create_audit_log(current_user["id"], "create", "customer", customer_doc["id"], {"name": data.name})
     return CustomerResponse(**customer_doc)
 
 @api_router.put("/customers/{customer_id}", response_model=CustomerResponse)
@@ -686,9 +885,7 @@ async def create_product(data: ProductCreate, current_user: dict = Depends(get_c
     await db.products.insert_one(product_doc)
     del product_doc["_id"]
     
-    await create_audit_log(current_user["id"], "create", "product", product_doc["id"],
-                          {"name": data.name})
-    
+    await create_audit_log(current_user["id"], "create", "product", product_doc["id"], {"name": data.name})
     return ProductResponse(**product_doc)
 
 @api_router.put("/products/{product_id}", response_model=ProductResponse)
@@ -713,7 +910,6 @@ async def delete_product(product_id: str, current_user: dict = Depends(get_curre
 # ===================== INVOICE ENDPOINTS =====================
 
 async def get_next_invoice_number(user_id: str) -> str:
-    # Get all invoices including deleted ones to maintain sequence
     last_invoice = await db.invoices.find_one(
         {"user_id": user_id},
         sort=[("created_at", -1)]
@@ -732,13 +928,11 @@ async def get_invoices(include_deleted: bool = False, current_user: dict = Depen
     
     invoices = await db.invoices.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
-    # Fetch customer details for each invoice
     for inv in invoices:
         if inv.get("customer_id"):
             customer = await db.customers.find_one({"id": inv["customer_id"]}, {"_id": 0})
             inv["customer"] = customer
         inv["items"] = inv.get("items", [])
-        # Ensure all new fields have defaults
         inv.setdefault("item_discount_total", 0)
         inv.setdefault("subtotal_after_item_discount", inv.get("subtotal", 0))
         inv.setdefault("taxable_amount", inv.get("subtotal_after_discount", inv.get("subtotal", 0)))
@@ -762,13 +956,11 @@ async def get_invoice(invoice_id: str, current_user: dict = Depends(get_current_
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
     
-    # Fetch customer details
     if invoice.get("customer_id"):
         customer = await db.customers.find_one({"id": invoice["customer_id"]}, {"_id": 0})
         invoice["customer"] = customer
     
     invoice["items"] = invoice.get("items", [])
-    # Ensure all new fields have defaults
     invoice.setdefault("item_discount_total", 0)
     invoice.setdefault("subtotal_after_item_discount", invoice.get("subtotal", 0))
     invoice.setdefault("taxable_amount", invoice.get("subtotal_after_discount", invoice.get("subtotal", 0)))
@@ -790,25 +982,20 @@ async def get_next_number(current_user: dict = Depends(get_current_user)):
 
 @api_router.post("/invoices", response_model=InvoiceResponse)
 async def create_invoice(data: InvoiceCreate, current_user: dict = Depends(get_current_user)):
-    # Get customer and business for GST calculation
     customer = await db.customers.find_one({"id": data.customer_id, "user_id": current_user["id"]}, {"_id": 0})
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     
     business = await db.business.find_one({"user_id": current_user["id"]}, {"_id": 0})
     
-    # Calculate totals with item-level discounts
     items = []
-    subtotal = 0  # Before any discount
+    subtotal = 0
     item_discount_total = 0
     
     for item in data.items:
         item_dict = item.model_dump()
-        
-        # Calculate item base amount (qty * rate)
         base_amount = item.quantity * item.rate
         
-        # Calculate item-level discount
         item_discount = 0
         if item.discount_type == "percentage" and item.discount_value > 0:
             item_discount = (base_amount * item.discount_value) / 100
@@ -818,15 +1005,11 @@ async def create_invoice(data: InvoiceCreate, current_user: dict = Depends(get_c
         item_dict["discount_amount"] = round(item_discount, 2)
         item_discount_total += item_discount
         
-        # Amount after item discount (before tax)
         amount_after_discount = base_amount - item_discount
         item_dict["amount"] = round(amount_after_discount, 2)
         
-        # Calculate GST on discounted amount
         gst_amount = (amount_after_discount * item.gst_rate) / 100
         item_dict["gst_amount"] = round(gst_amount, 2)
-        
-        # Total for item (amount + GST)
         item_dict["total"] = round(amount_after_discount + gst_amount, 2)
         
         subtotal += base_amount
@@ -834,7 +1017,6 @@ async def create_invoice(data: InvoiceCreate, current_user: dict = Depends(get_c
     
     subtotal_after_item_discount = subtotal - item_discount_total
     
-    # Calculate invoice-level discount
     invoice_discount = 0
     if data.discount_type == "percentage" and data.discount_value > 0:
         invoice_discount = (subtotal_after_item_discount * data.discount_value) / 100
@@ -843,14 +1025,11 @@ async def create_invoice(data: InvoiceCreate, current_user: dict = Depends(get_c
     
     taxable_amount = subtotal_after_item_discount - invoice_discount
     
-    # Calculate GST on taxable amount
     total_gst = sum(item["gst_amount"] for item in items)
-    # Adjust GST proportionally if invoice discount applied
     if invoice_discount > 0 and subtotal_after_item_discount > 0:
         adjustment_ratio = taxable_amount / subtotal_after_item_discount
         total_gst = total_gst * adjustment_ratio
     
-    # Determine GST type (inter-state vs intra-state)
     is_inter_state = business and customer.get("state") and business.get("state") and customer["state"] != business["state"]
     
     cgst = 0 if is_inter_state else total_gst / 2
@@ -924,7 +1103,6 @@ async def update_invoice_payment(invoice_id: str, data: PaymentUpdateRequest, cu
     
     del result["_id"]
     
-    # Fetch customer
     if result.get("customer_id"):
         customer = await db.customers.find_one({"id": result["customer_id"]}, {"_id": 0})
         result["customer"] = customer
@@ -957,24 +1135,19 @@ async def update_invoice_status(invoice_id: str, status: str, current_user: dict
     if not result:
         raise HTTPException(status_code=404, detail="Invoice not found")
     
-    await create_audit_log(current_user["id"], "update", "invoice", invoice_id,
-                          {"status": status})
-    
+    await create_audit_log(current_user["id"], "update", "invoice", invoice_id, {"status": status})
     return {"success": True, "message": f"Invoice status updated to {status}"}
 
 @api_router.delete("/invoices/{invoice_id}")
 async def delete_invoice(invoice_id: str, current_user: dict = Depends(get_current_user)):
-    """Soft delete invoice - retains for audit but excludes from calculations"""
     invoice = await db.invoices.find_one({"id": invoice_id, "user_id": current_user["id"]})
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
     
-    # Check if there are income entries linked to this invoice
     income_count = await db.income.count_documents({"invoice_id": invoice_id, "user_id": current_user["id"]})
     if income_count > 0:
         raise HTTPException(status_code=400, detail="Cannot delete invoice with linked income entries. Delete income entries first.")
     
-    # Soft delete
     await db.invoices.update_one(
         {"id": invoice_id, "user_id": current_user["id"]},
         {"$set": {
@@ -992,7 +1165,6 @@ async def delete_invoice(invoice_id: str, current_user: dict = Depends(get_curre
 
 @api_router.put("/invoices/{invoice_id}/restore")
 async def restore_invoice(invoice_id: str, current_user: dict = Depends(get_current_user)):
-    """Restore a soft-deleted invoice"""
     result = await db.invoices.find_one_and_update(
         {"id": invoice_id, "user_id": current_user["id"], "is_deleted": True},
         {"$set": {
@@ -1011,17 +1183,21 @@ async def restore_invoice(invoice_id: str, current_user: dict = Depends(get_curr
     
     return {"success": True, "message": "Invoice restored"}
 
-# ===================== INCOME ENDPOINTS (NEW) =====================
+# ===================== INCOME ENDPOINTS (ENHANCED - DUAL TYPE) =====================
 
 @api_router.get("/income", response_model=List[IncomeResponse])
-async def get_income(current_user: dict = Depends(get_current_user)):
-    income_entries = await db.income.find(
-        {"user_id": current_user["id"]}, 
-        {"_id": 0}
-    ).sort("payment_date", -1).to_list(1000)
+async def get_income(income_type: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    query = {"user_id": current_user["id"]}
+    if income_type and income_type in INCOME_TYPES:
+        query["income_type"] = income_type
     
-    # Enrich with invoice and bank account info
+    income_entries = await db.income.find(query, {"_id": 0}).sort("payment_date", -1).to_list(1000)
+    
     for entry in income_entries:
+        # Ensure income_type exists (for backward compatibility)
+        entry.setdefault("income_type", "invoice")
+        entry.setdefault("income_source", None)
+        
         if entry.get("invoice_id"):
             invoice = await db.invoices.find_one({"id": entry["invoice_id"]}, {"_id": 0, "invoice_number": 1, "customer_id": 1})
             if invoice:
@@ -1042,52 +1218,79 @@ async def get_income(current_user: dict = Depends(get_current_user)):
 
 @api_router.post("/income", response_model=IncomeResponse)
 async def create_income(data: IncomeCreate, current_user: dict = Depends(get_current_user)):
-    # Validate invoice exists and is not deleted
-    invoice = await db.invoices.find_one(
-        {"id": data.invoice_id, "user_id": current_user["id"], "is_deleted": {"$ne": True}},
-        {"_id": 0}
-    )
-    if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found or deleted")
+    # Validate income type
+    if data.income_type not in INCOME_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid income type. Must be one of: {INCOME_TYPES}")
     
-    # Check for overpayment
-    current_paid = invoice.get("amount_paid", 0)
-    total_amount = invoice.get("total_amount", 0)
-    if current_paid + data.amount > total_amount + 0.01:  # Small tolerance for rounding
-        raise HTTPException(status_code=400, detail=f"Payment amount exceeds balance due. Balance: {total_amount - current_paid:.2f}")
+    # Validate bank account (MANDATORY for all income)
+    if not data.bank_account_id:
+        raise HTTPException(status_code=400, detail="Bank account is mandatory - specify which account received the money")
     
-    # Validate bank account if provided
-    bank_name = None
-    if data.bank_account_id:
-        bank = await db.bank_accounts.find_one({"id": data.bank_account_id, "user_id": current_user["id"]}, {"_id": 0})
-        if not bank:
-            raise HTTPException(status_code=404, detail="Bank account not found")
-        bank_name = bank.get("bank_name")
+    bank = await db.bank_accounts.find_one({"id": data.bank_account_id, "user_id": current_user["id"]}, {"_id": 0})
+    if not bank:
+        raise HTTPException(status_code=404, detail="Bank account not found")
+    
+    invoice = None
+    invoice_number = None
+    customer_name = None
+    
+    if data.income_type == "invoice":
+        # Invoice-linked income
+        if not data.invoice_id:
+            raise HTTPException(status_code=400, detail="Invoice ID is required for invoice-linked income")
+        
+        invoice = await db.invoices.find_one(
+            {"id": data.invoice_id, "user_id": current_user["id"], "is_deleted": {"$ne": True}},
+            {"_id": 0}
+        )
+        if not invoice:
+            raise HTTPException(status_code=404, detail="Invoice not found or deleted")
+        
+        # Check for overpayment
+        current_paid = invoice.get("amount_paid", 0)
+        total_amount = invoice.get("total_amount", 0)
+        if current_paid + data.amount > total_amount + 0.01:
+            raise HTTPException(status_code=400, detail=f"Payment amount exceeds balance due. Balance: ₹{total_amount - current_paid:.2f}")
+        
+        invoice_number = invoice.get("invoice_number")
+        if invoice.get("customer_id"):
+            customer = await db.customers.find_one({"id": invoice["customer_id"]}, {"_id": 0, "name": 1})
+            customer_name = customer.get("name") if customer else None
+    else:
+        # Personal income
+        if not data.income_source:
+            raise HTTPException(status_code=400, detail="Income source is required for personal income")
+        if data.income_source not in PERSONAL_INCOME_SOURCES:
+            raise HTTPException(status_code=400, detail=f"Invalid income source. Must be one of: {PERSONAL_INCOME_SOURCES}")
     
     income_doc = {
         "id": str(uuid.uuid4()),
         "user_id": current_user["id"],
-        **data.model_dump(),
+        "income_type": data.income_type,
+        "invoice_id": data.invoice_id if data.income_type == "invoice" else None,
+        "income_source": data.income_source if data.income_type == "personal" else None,
+        "amount": data.amount,
+        "payment_date": data.payment_date,
+        "payment_mode": data.payment_mode,
+        "bank_account_id": data.bank_account_id,
+        "reference_number": data.reference_number,
+        "remarks": data.remarks,
         "created_at": get_timestamp(),
         "updated_at": get_timestamp()
     }
     await db.income.insert_one(income_doc)
     del income_doc["_id"]
     
-    # Update invoice payment status
-    await update_invoice_payment_status(data.invoice_id, current_user["id"])
+    # Update invoice payment status if invoice-linked
+    if data.income_type == "invoice" and data.invoice_id:
+        await update_invoice_payment_status(data.invoice_id, current_user["id"])
     
     await create_audit_log(current_user["id"], "create", "income", income_doc["id"],
-                          {"invoice_id": data.invoice_id, "amount": data.amount})
+                          {"income_type": data.income_type, "amount": data.amount, "bank": bank.get("bank_name")})
     
-    # Enrich response
-    income_doc["invoice_number"] = invoice.get("invoice_number")
-    if invoice.get("customer_id"):
-        customer = await db.customers.find_one({"id": invoice["customer_id"]}, {"_id": 0, "name": 1})
-        income_doc["customer_name"] = customer.get("name") if customer else None
-    else:
-        income_doc["customer_name"] = None
-    income_doc["bank_name"] = bank_name
+    income_doc["invoice_number"] = invoice_number
+    income_doc["customer_name"] = customer_name
+    income_doc["bank_name"] = bank.get("bank_name")
     
     return IncomeResponse(**income_doc)
 
@@ -1099,42 +1302,66 @@ async def update_income(income_id: str, data: IncomeCreate, current_user: dict =
     
     old_invoice_id = existing.get("invoice_id")
     
-    # Validate invoice exists
-    invoice = await db.invoices.find_one(
-        {"id": data.invoice_id, "user_id": current_user["id"], "is_deleted": {"$ne": True}},
-        {"_id": 0}
-    )
-    if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found or deleted")
+    # Validate bank account
+    if not data.bank_account_id:
+        raise HTTPException(status_code=400, detail="Bank account is mandatory")
+    
+    bank = await db.bank_accounts.find_one({"id": data.bank_account_id, "user_id": current_user["id"]}, {"_id": 0})
+    if not bank:
+        raise HTTPException(status_code=404, detail="Bank account not found")
+    
+    invoice_number = None
+    customer_name = None
+    
+    if data.income_type == "invoice":
+        if not data.invoice_id:
+            raise HTTPException(status_code=400, detail="Invoice ID is required for invoice-linked income")
+        
+        invoice = await db.invoices.find_one(
+            {"id": data.invoice_id, "user_id": current_user["id"], "is_deleted": {"$ne": True}},
+            {"_id": 0}
+        )
+        if not invoice:
+            raise HTTPException(status_code=404, detail="Invoice not found or deleted")
+        
+        invoice_number = invoice.get("invoice_number")
+        if invoice.get("customer_id"):
+            customer = await db.customers.find_one({"id": invoice["customer_id"]}, {"_id": 0, "name": 1})
+            customer_name = customer.get("name") if customer else None
+    
+    update_data = {
+        "income_type": data.income_type,
+        "invoice_id": data.invoice_id if data.income_type == "invoice" else None,
+        "income_source": data.income_source if data.income_type == "personal" else None,
+        "amount": data.amount,
+        "payment_date": data.payment_date,
+        "payment_mode": data.payment_mode,
+        "bank_account_id": data.bank_account_id,
+        "reference_number": data.reference_number,
+        "remarks": data.remarks,
+        "updated_at": get_timestamp()
+    }
     
     result = await db.income.find_one_and_update(
         {"id": income_id, "user_id": current_user["id"]},
-        {"$set": {**data.model_dump(), "updated_at": get_timestamp()}},
+        {"$set": update_data},
         return_document=True
     )
     del result["_id"]
     
-    # Update payment status for both old and new invoice (if different)
-    await update_invoice_payment_status(data.invoice_id, current_user["id"])
+    # Update payment status for affected invoices
+    if data.income_type == "invoice" and data.invoice_id:
+        await update_invoice_payment_status(data.invoice_id, current_user["id"])
     if old_invoice_id and old_invoice_id != data.invoice_id:
         await update_invoice_payment_status(old_invoice_id, current_user["id"])
     
     await create_audit_log(current_user["id"], "update", "income", income_id,
-                          {"invoice_id": data.invoice_id, "amount": data.amount})
+                          {"income_type": data.income_type, "amount": data.amount})
     
-    # Enrich response
-    result["invoice_number"] = invoice.get("invoice_number")
-    if invoice.get("customer_id"):
-        customer = await db.customers.find_one({"id": invoice["customer_id"]}, {"_id": 0, "name": 1})
-        result["customer_name"] = customer.get("name") if customer else None
-    else:
-        result["customer_name"] = None
-    
-    if result.get("bank_account_id"):
-        bank = await db.bank_accounts.find_one({"id": result["bank_account_id"]}, {"_id": 0, "bank_name": 1})
-        result["bank_name"] = bank.get("bank_name") if bank else None
-    else:
-        result["bank_name"] = None
+    result["invoice_number"] = invoice_number
+    result["customer_name"] = customer_name
+    result["bank_name"] = bank.get("bank_name")
+    result.setdefault("income_source", None)
     
     return IncomeResponse(**result)
 
@@ -1150,7 +1377,7 @@ async def delete_income(income_id: str, current_user: dict = Depends(get_current
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Income entry not found")
     
-    # Update invoice payment status
+    # Update invoice payment status if invoice-linked
     if invoice_id:
         await update_invoice_payment_status(invoice_id, current_user["id"])
     
@@ -1159,7 +1386,7 @@ async def delete_income(income_id: str, current_user: dict = Depends(get_current
     
     return {"success": True, "message": "Income entry deleted"}
 
-# ===================== EXPENSE ENDPOINTS =====================
+# ===================== EXPENSE ENDPOINTS (ENHANCED - MANDATORY BANK) =====================
 
 @api_router.get("/expenses", response_model=List[ExpenseResponse])
 async def get_expenses(current_user: dict = Depends(get_current_user)):
@@ -1168,7 +1395,6 @@ async def get_expenses(current_user: dict = Depends(get_current_user)):
         {"_id": 0}
     ).sort("date", -1).to_list(1000)
     
-    # Enrich with bank account info
     for exp in expenses:
         if exp.get("bank_account_id"):
             bank = await db.bank_accounts.find_one({"id": exp["bank_account_id"]}, {"_id": 0, "bank_name": 1})
@@ -1176,17 +1402,19 @@ async def get_expenses(current_user: dict = Depends(get_current_user)):
         else:
             exp["bank_name"] = None
         exp.setdefault("reference_number", None)
+        exp.setdefault("payment_mode", exp.get("payment_method", "Cash"))
     
     return [ExpenseResponse(**e) for e in expenses]
 
 @api_router.post("/expenses", response_model=ExpenseResponse)
 async def create_expense(data: ExpenseCreate, current_user: dict = Depends(get_current_user)):
-    bank_name = None
-    if data.bank_account_id:
-        bank = await db.bank_accounts.find_one({"id": data.bank_account_id, "user_id": current_user["id"]}, {"_id": 0})
-        if not bank:
-            raise HTTPException(status_code=404, detail="Bank account not found")
-        bank_name = bank.get("bank_name")
+    # Validate bank account (MANDATORY)
+    if not data.bank_account_id:
+        raise HTTPException(status_code=400, detail="Bank account is mandatory - specify which account was debited")
+    
+    bank = await db.bank_accounts.find_one({"id": data.bank_account_id, "user_id": current_user["id"]}, {"_id": 0})
+    if not bank:
+        raise HTTPException(status_code=404, detail="Bank account not found")
     
     expense_doc = {
         "id": str(uuid.uuid4()),
@@ -1199,13 +1427,21 @@ async def create_expense(data: ExpenseCreate, current_user: dict = Depends(get_c
     del expense_doc["_id"]
     
     await create_audit_log(current_user["id"], "create", "expense", expense_doc["id"],
-                          {"category": data.category, "amount": data.amount})
+                          {"category": data.category, "amount": data.amount, "bank": bank.get("bank_name")})
     
-    expense_doc["bank_name"] = bank_name
+    expense_doc["bank_name"] = bank.get("bank_name")
     return ExpenseResponse(**expense_doc)
 
 @api_router.put("/expenses/{expense_id}", response_model=ExpenseResponse)
 async def update_expense(expense_id: str, data: ExpenseCreate, current_user: dict = Depends(get_current_user)):
+    # Validate bank account
+    if not data.bank_account_id:
+        raise HTTPException(status_code=400, detail="Bank account is mandatory")
+    
+    bank = await db.bank_accounts.find_one({"id": data.bank_account_id, "user_id": current_user["id"]}, {"_id": 0})
+    if not bank:
+        raise HTTPException(status_code=404, detail="Bank account not found")
+    
     result = await db.expenses.find_one_and_update(
         {"id": expense_id, "user_id": current_user["id"]},
         {"$set": {**data.model_dump(), "updated_at": get_timestamp()}},
@@ -1215,62 +1451,24 @@ async def update_expense(expense_id: str, data: ExpenseCreate, current_user: dic
         raise HTTPException(status_code=404, detail="Expense not found")
     del result["_id"]
     
-    if result.get("bank_account_id"):
-        bank = await db.bank_accounts.find_one({"id": result["bank_account_id"]}, {"_id": 0, "bank_name": 1})
-        result["bank_name"] = bank.get("bank_name") if bank else None
-    else:
-        result["bank_name"] = None
+    result["bank_name"] = bank.get("bank_name")
     result.setdefault("reference_number", None)
+    result.setdefault("payment_mode", result.get("payment_method", "Cash"))
     
     return ExpenseResponse(**result)
 
 @api_router.delete("/expenses/{expense_id}")
 async def delete_expense(expense_id: str, current_user: dict = Depends(get_current_user)):
-    result = await db.expenses.delete_one({"id": expense_id, "user_id": current_user["id"]})
-    if result.deleted_count == 0:
+    expense = await db.expenses.find_one({"id": expense_id, "user_id": current_user["id"]}, {"_id": 0})
+    if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
     
-    await create_audit_log(current_user["id"], "delete", "expense", expense_id, {})
+    result = await db.expenses.delete_one({"id": expense_id, "user_id": current_user["id"]})
+    
+    await create_audit_log(current_user["id"], "delete", "expense", expense_id,
+                          {"category": expense.get("category"), "amount": expense.get("amount")})
     
     return {"success": True, "message": "Expense deleted"}
-
-# ===================== LEDGER SETTINGS ENDPOINTS =====================
-
-@api_router.get("/ledger-settings")
-async def get_ledger_settings(current_user: dict = Depends(get_current_user)):
-    settings = await db.ledger_settings.find_one({"user_id": current_user["id"]}, {"_id": 0})
-    if not settings:
-        return None
-    return LedgerSettingsResponse(**settings)
-
-@api_router.post("/ledger-settings", response_model=LedgerSettingsResponse)
-async def create_ledger_settings(data: LedgerSettingsCreate, current_user: dict = Depends(get_current_user)):
-    existing = await db.ledger_settings.find_one({"user_id": current_user["id"]})
-    if existing:
-        raise HTTPException(status_code=400, detail="Ledger settings already exist. Use PUT to update.")
-    
-    settings_doc = {
-        "id": str(uuid.uuid4()),
-        "user_id": current_user["id"],
-        **data.model_dump(),
-        "created_at": get_timestamp(),
-        "updated_at": get_timestamp()
-    }
-    await db.ledger_settings.insert_one(settings_doc)
-    del settings_doc["_id"]
-    return LedgerSettingsResponse(**settings_doc)
-
-@api_router.put("/ledger-settings", response_model=LedgerSettingsResponse)
-async def update_ledger_settings(data: LedgerSettingsCreate, current_user: dict = Depends(get_current_user)):
-    result = await db.ledger_settings.find_one_and_update(
-        {"user_id": current_user["id"]},
-        {"$set": {**data.model_dump(), "updated_at": get_timestamp()}},
-        return_document=True
-    )
-    if not result:
-        return await create_ledger_settings(data, current_user)
-    del result["_id"]
-    return LedgerSettingsResponse(**result)
 
 # ===================== DASHBOARD & LEDGER ENDPOINTS =====================
 
@@ -1278,7 +1476,6 @@ async def update_ledger_settings(data: LedgerSettingsCreate, current_user: dict 
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
     
-    # Get counts and sums (excluding deleted invoices)
     invoices = await db.invoices.find(
         {"user_id": user_id, "is_deleted": {"$ne": True}}, 
         {"_id": 0}
@@ -1287,46 +1484,64 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     products = await db.products.count_documents({"user_id": user_id})
     expenses = await db.expenses.find({"user_id": user_id}, {"_id": 0}).to_list(1000)
     income_entries = await db.income.find({"user_id": user_id}, {"_id": 0}).to_list(1000)
+    bank_accounts = await db.bank_accounts.find({"user_id": user_id}, {"_id": 0}).to_list(100)
     
-    # Calculate totals based on actual income received (not invoice totals)
-    total_income = sum(entry["amount"] for entry in income_entries)
+    # Separate business income from personal income
+    business_income = sum(entry["amount"] for entry in income_entries if entry.get("income_type", "invoice") == "invoice")
+    personal_income = sum(entry["amount"] for entry in income_entries if entry.get("income_type") == "personal")
+    total_income = business_income + personal_income
+    
     total_expenses = sum(exp["amount"] for exp in expenses)
     total_invoiced = sum(inv["total_amount"] for inv in invoices)
     total_paid = sum(inv.get("amount_paid", 0) for inv in invoices)
     total_outstanding = total_invoiced - total_paid
     pending_count = len([inv for inv in invoices if inv.get("payment_status") != "paid"])
     
-    # Get ledger settings for opening balance
-    ledger_settings = await db.ledger_settings.find_one({"user_id": user_id}, {"_id": 0})
-    opening_balance = ledger_settings.get("opening_balance", 0) if ledger_settings else 0
+    # Calculate total opening balance from all bank accounts
+    total_opening_balance = sum(acc.get("opening_balance", 0) for acc in bank_accounts)
+    
+    # Calculate total current balance across all banks
+    total_current_balance = 0
+    for acc in bank_accounts:
+        balance = await calculate_bank_balance(acc["id"], user_id)
+        total_current_balance += balance
     
     return {
         "totalInvoices": len(invoices),
         "totalInvoiced": round(total_invoiced, 2),
         "totalIncome": round(total_income, 2),
+        "businessIncome": round(business_income, 2),
+        "personalIncome": round(personal_income, 2),
         "totalCustomers": customers,
         "totalProducts": products,
         "totalExpenses": round(total_expenses, 2),
-        "openingBalance": round(opening_balance, 2),
-        "netProfit": round(opening_balance + total_income - total_expenses, 2),
+        "openingBalance": round(total_opening_balance, 2),
+        "currentBalance": round(total_current_balance, 2),
+        "netProfit": round(total_opening_balance + total_income - total_expenses, 2),
         "pendingPayments": pending_count,
-        "totalOutstanding": round(total_outstanding, 2)
+        "totalOutstanding": round(total_outstanding, 2),
+        "bankAccountsCount": len(bank_accounts)
     }
 
 @api_router.get("/ledger")
 async def get_ledger_data(current_user: dict = Depends(get_current_user)):
+    """Get consolidated ledger data across all bank accounts"""
     user_id = current_user["id"]
     
-    # Get ledger settings
-    ledger_settings = await db.ledger_settings.find_one({"user_id": user_id}, {"_id": 0})
-    opening_balance = ledger_settings.get("opening_balance", 0) if ledger_settings else 0
-    opening_date = ledger_settings.get("opening_balance_date") if ledger_settings else None
+    # Get all bank accounts
+    bank_accounts = await db.bank_accounts.find({"user_id": user_id}, {"_id": 0}).to_list(100)
+    total_opening_balance = sum(acc.get("opening_balance", 0) for acc in bank_accounts)
     
-    # Get all income entries (actual cash flow)
+    # Get all income entries
     income_entries = await db.income.find({"user_id": user_id}, {"_id": 0}).sort("payment_date", -1).to_list(1000)
     
-    # Enrich income entries
+    # Enrich and categorize income
+    business_income_list = []
+    personal_income_list = []
     for entry in income_entries:
+        entry.setdefault("income_type", "invoice")
+        entry.setdefault("income_source", None)
+        
         if entry.get("invoice_id"):
             invoice = await db.invoices.find_one({"id": entry["invoice_id"]}, {"_id": 0, "invoice_number": 1, "customer_id": 1})
             if invoice:
@@ -1334,51 +1549,186 @@ async def get_ledger_data(current_user: dict = Depends(get_current_user)):
                 if invoice.get("customer_id"):
                     customer = await db.customers.find_one({"id": invoice["customer_id"]}, {"_id": 0, "name": 1})
                     entry["customer_name"] = customer.get("name") if customer else None
+        
+        if entry.get("bank_account_id"):
+            bank = await db.bank_accounts.find_one({"id": entry["bank_account_id"]}, {"_id": 0, "bank_name": 1})
+            entry["bank_name"] = bank.get("bank_name") if bank else None
+        
+        if entry.get("income_type") == "personal":
+            personal_income_list.append(entry)
+        else:
+            business_income_list.append(entry)
     
     # Get all expenses
     expenses = await db.expenses.find({"user_id": user_id}, {"_id": 0}).sort("date", -1).to_list(1000)
+    for exp in expenses:
+        if exp.get("bank_account_id"):
+            bank = await db.bank_accounts.find_one({"id": exp["bank_account_id"]}, {"_id": 0, "bank_name": 1})
+            exp["bank_name"] = bank.get("bank_name") if bank else None
     
-    # Get invoices (excluding deleted) for outstanding calculation
+    # Get invoices for outstanding
     invoices = await db.invoices.find(
         {"user_id": user_id, "is_deleted": {"$ne": True}}, 
         {"_id": 0}
     ).sort("created_at", -1).to_list(1000)
     
-    # Enrich invoices with customer names
     for inv in invoices:
         if inv.get("customer_id"):
             customer = await db.customers.find_one({"id": inv["customer_id"]}, {"_id": 0, "name": 1})
             inv["customer_name"] = customer.get("name") if customer else None
     
+    # Get bank transfers
+    transfers = await db.bank_transfers.find({"user_id": user_id}, {"_id": 0}).sort("transfer_date", -1).to_list(1000)
+    
     # Calculate totals
-    total_income = sum(entry["amount"] for entry in income_entries)
+    total_business_income = sum(entry["amount"] for entry in business_income_list)
+    total_personal_income = sum(entry["amount"] for entry in personal_income_list)
+    total_income = total_business_income + total_personal_income
     total_expenses = sum(exp["amount"] for exp in expenses)
     total_invoiced = sum(inv["total_amount"] for inv in invoices)
     total_outstanding = sum(inv.get("balance_due", inv["total_amount"]) for inv in invoices if inv.get("payment_status") != "paid")
     
-    closing_balance = opening_balance + total_income - total_expenses
+    closing_balance = total_opening_balance + total_income - total_expenses
     
     return {
-        "openingBalance": round(opening_balance, 2),
-        "openingDate": opening_date,
+        "openingBalance": round(total_opening_balance, 2),
         "totalIncome": round(total_income, 2),
+        "businessIncome": round(total_business_income, 2),
+        "personalIncome": round(total_personal_income, 2),
         "totalExpenses": round(total_expenses, 2),
         "closingBalance": round(closing_balance, 2),
         "totalInvoiced": round(total_invoiced, 2),
         "totalOutstanding": round(total_outstanding, 2),
-        "recentIncome": income_entries[:10],
+        "recentBusinessIncome": business_income_list[:10],
+        "recentPersonalIncome": personal_income_list[:10],
         "recentExpenses": expenses[:10],
         "outstandingInvoices": [inv for inv in invoices if inv.get("payment_status") != "paid"][:10],
+        "allBusinessIncome": business_income_list,
+        "allPersonalIncome": personal_income_list,
         "allIncome": income_entries,
         "allExpenses": expenses,
-        "allInvoices": invoices
+        "allInvoices": invoices,
+        "bankTransfers": transfers[:20]
+    }
+
+@api_router.get("/ledger/bank/{bank_id}")
+async def get_bank_ledger(bank_id: str, current_user: dict = Depends(get_current_user)):
+    """Get individual bank account ledger with running balance"""
+    user_id = current_user["id"]
+    
+    # Get bank account
+    bank = await db.bank_accounts.find_one({"id": bank_id, "user_id": user_id}, {"_id": 0})
+    if not bank:
+        raise HTTPException(status_code=404, detail="Bank account not found")
+    
+    opening_balance = bank.get("opening_balance", 0)
+    opening_date = bank.get("opening_balance_date", bank.get("created_at", "")[:10])
+    
+    # Get all transactions for this bank
+    transactions = []
+    
+    # Add income entries
+    income_entries = await db.income.find({"bank_account_id": bank_id, "user_id": user_id}, {"_id": 0}).to_list(10000)
+    for entry in income_entries:
+        entry.setdefault("income_type", "invoice")
+        description = ""
+        if entry.get("income_type") == "personal":
+            description = f"Personal Income - {entry.get('income_source', 'Other')}"
+        else:
+            if entry.get("invoice_id"):
+                invoice = await db.invoices.find_one({"id": entry["invoice_id"]}, {"_id": 0, "invoice_number": 1, "customer_id": 1})
+                if invoice:
+                    customer = await db.customers.find_one({"id": invoice.get("customer_id")}, {"_id": 0, "name": 1})
+                    description = f"Invoice {invoice.get('invoice_number')} - {customer.get('name') if customer else 'Customer'}"
+        
+        transactions.append({
+            "id": entry["id"],
+            "date": entry["payment_date"],
+            "type": "income",
+            "income_type": entry.get("income_type", "invoice"),
+            "description": description or f"Income - {entry.get('payment_mode', '')}",
+            "reference": entry.get("reference_number"),
+            "credit": entry["amount"],
+            "debit": 0,
+            "created_at": entry.get("created_at", entry["payment_date"])
+        })
+    
+    # Add expense entries
+    expense_entries = await db.expenses.find({"bank_account_id": bank_id, "user_id": user_id}, {"_id": 0}).to_list(10000)
+    for exp in expense_entries:
+        transactions.append({
+            "id": exp["id"],
+            "date": exp["date"],
+            "type": "expense",
+            "description": f"{exp['category']} - {exp.get('vendor', 'Expense')}",
+            "reference": exp.get("reference_number"),
+            "credit": 0,
+            "debit": exp["amount"],
+            "created_at": exp.get("created_at", exp["date"])
+        })
+    
+    # Add transfers
+    transfers_in = await db.bank_transfers.find({"to_bank_id": bank_id, "user_id": user_id}, {"_id": 0}).to_list(10000)
+    for t in transfers_in:
+        from_bank = await db.bank_accounts.find_one({"id": t["from_bank_id"]}, {"_id": 0, "bank_name": 1})
+        transactions.append({
+            "id": t["id"],
+            "date": t["transfer_date"],
+            "type": "transfer_in",
+            "description": f"Transfer from {from_bank.get('bank_name') if from_bank else 'Account'}",
+            "reference": t.get("reference_number"),
+            "credit": t["amount"],
+            "debit": 0,
+            "created_at": t.get("created_at", t["transfer_date"])
+        })
+    
+    transfers_out = await db.bank_transfers.find({"from_bank_id": bank_id, "user_id": user_id}, {"_id": 0}).to_list(10000)
+    for t in transfers_out:
+        to_bank = await db.bank_accounts.find_one({"id": t["to_bank_id"]}, {"_id": 0, "bank_name": 1})
+        transactions.append({
+            "id": t["id"],
+            "date": t["transfer_date"],
+            "type": "transfer_out",
+            "description": f"Transfer to {to_bank.get('bank_name') if to_bank else 'Account'}",
+            "reference": t.get("reference_number"),
+            "credit": 0,
+            "debit": t["amount"],
+            "created_at": t.get("created_at", t["transfer_date"])
+        })
+    
+    # Sort by date then by created_at
+    transactions.sort(key=lambda x: (x["date"], x.get("created_at", "")))
+    
+    # Calculate running balance
+    running_balance = opening_balance
+    for t in transactions:
+        running_balance = running_balance + t["credit"] - t["debit"]
+        t["balance"] = round(running_balance, 2)
+    
+    # Calculate totals
+    total_credit = sum(t["credit"] for t in transactions)
+    total_debit = sum(t["debit"] for t in transactions)
+    current_balance = opening_balance + total_credit - total_debit
+    
+    return {
+        "bankAccount": {
+            "id": bank["id"],
+            "bank_name": bank["bank_name"],
+            "account_number": bank["account_number"],
+            "account_type": bank.get("account_type", "Current")
+        },
+        "openingBalance": round(opening_balance, 2),
+        "openingDate": opening_date,
+        "totalCredit": round(total_credit, 2),
+        "totalDebit": round(total_debit, 2),
+        "currentBalance": round(current_balance, 2),
+        "transactions": transactions
     }
 
 # ===================== REPORTS ENDPOINTS =====================
 
 @api_router.get("/reports/outstanding")
 async def get_outstanding_report(current_user: dict = Depends(get_current_user)):
-    """Get outstanding invoices report"""
     invoices = await db.invoices.find(
         {"user_id": current_user["id"], "is_deleted": {"$ne": True}, "payment_status": {"$ne": "paid"}},
         {"_id": 0}
@@ -1399,17 +1749,22 @@ async def get_outstanding_report(current_user: dict = Depends(get_current_user))
 
 @api_router.get("/reports/income-expense")
 async def get_income_expense_report(current_user: dict = Depends(get_current_user)):
-    """Get income vs expense summary"""
     income_entries = await db.income.find({"user_id": current_user["id"]}, {"_id": 0}).to_list(1000)
     expenses = await db.expenses.find({"user_id": current_user["id"]}, {"_id": 0}).to_list(1000)
     
-    total_income = sum(entry["amount"] for entry in income_entries)
+    # Separate business and personal income
+    business_income = [e for e in income_entries if e.get("income_type", "invoice") == "invoice"]
+    personal_income = [e for e in income_entries if e.get("income_type") == "personal"]
+    
+    total_business_income = sum(entry["amount"] for entry in business_income)
+    total_personal_income = sum(entry["amount"] for entry in personal_income)
+    total_income = total_business_income + total_personal_income
     total_expenses = sum(exp["amount"] for exp in expenses)
     
     # Group by month
     income_by_month = {}
     for entry in income_entries:
-        month = entry["payment_date"][:7]  # YYYY-MM
+        month = entry["payment_date"][:7]
         income_by_month[month] = income_by_month.get(month, 0) + entry["amount"]
     
     expense_by_month = {}
@@ -1419,15 +1774,57 @@ async def get_income_expense_report(current_user: dict = Depends(get_current_use
     
     return {
         "totalIncome": round(total_income, 2),
+        "businessIncome": round(total_business_income, 2),
+        "personalIncome": round(total_personal_income, 2),
         "totalExpenses": round(total_expenses, 2),
         "netProfit": round(total_income - total_expenses, 2),
         "incomeByMonth": income_by_month,
         "expenseByMonth": expense_by_month
     }
 
+@api_router.get("/reports/cash-flow")
+async def get_cash_flow_report(current_user: dict = Depends(get_current_user)):
+    """Cash flow statement showing inflows and outflows"""
+    user_id = current_user["id"]
+    
+    bank_accounts = await db.bank_accounts.find({"user_id": user_id}, {"_id": 0}).to_list(100)
+    income_entries = await db.income.find({"user_id": user_id}, {"_id": 0}).to_list(1000)
+    expenses = await db.expenses.find({"user_id": user_id}, {"_id": 0}).to_list(1000)
+    
+    total_opening = sum(acc.get("opening_balance", 0) for acc in bank_accounts)
+    
+    business_income = sum(e["amount"] for e in income_entries if e.get("income_type", "invoice") == "invoice")
+    personal_income = sum(e["amount"] for e in income_entries if e.get("income_type") == "personal")
+    total_income = business_income + personal_income
+    
+    total_expenses = sum(exp["amount"] for exp in expenses)
+    
+    # Group expenses by category
+    expense_by_category = {}
+    for exp in expenses:
+        cat = exp.get("category", "Other")
+        expense_by_category[cat] = expense_by_category.get(cat, 0) + exp["amount"]
+    
+    net_cash_flow = total_income - total_expenses
+    closing_balance = total_opening + net_cash_flow
+    
+    return {
+        "openingBalance": round(total_opening, 2),
+        "inflows": {
+            "businessIncome": round(business_income, 2),
+            "personalIncome": round(personal_income, 2),
+            "totalInflows": round(total_income, 2)
+        },
+        "outflows": {
+            "byCategory": {k: round(v, 2) for k, v in expense_by_category.items()},
+            "totalOutflows": round(total_expenses, 2)
+        },
+        "netCashFlow": round(net_cash_flow, 2),
+        "closingBalance": round(closing_balance, 2)
+    }
+
 @api_router.get("/reports/audit-log")
 async def get_audit_log(limit: int = 100, current_user: dict = Depends(get_current_user)):
-    """Get audit log"""
     logs = await db.audit_logs.find(
         {"user_id": current_user["id"]},
         {"_id": 0}

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Plus, Trash2, ArrowLeft, Save } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Save, Percent, IndianRupee } from 'lucide-react';
 
 const CreateInvoice = () => {
   const navigate = useNavigate();
@@ -20,13 +20,16 @@ const CreateInvoice = () => {
   const [formData, setFormData] = useState({
     customer_id: '',
     invoice_date: new Date().toISOString().split('T')[0],
+    due_date: '',
     discount_type: '',
     discount_value: '',
-    notes: ''
+    notes: '',
+    terms: '',
+    status: 'issued'
   });
 
   const [items, setItems] = useState([
-    { product_id: '', product_name: '', description: '', hsn_code: '', quantity: 1, unit: 'Nos', rate: 0, gst_rate: 18 }
+    { product_id: '', product_name: '', description: '', hsn_code: '', quantity: 1, unit: 'Nos', rate: 0, gst_rate: 18, discount_type: '', discount_value: 0 }
   ]);
 
   useEffect(() => {
@@ -77,7 +80,7 @@ const CreateInvoice = () => {
   };
 
   const addItem = () => {
-    setItems([...items, { product_id: '', product_name: '', description: '', hsn_code: '', quantity: 1, unit: 'Nos', rate: 0, gst_rate: 18 }]);
+    setItems([...items, { product_id: '', product_name: '', description: '', hsn_code: '', quantity: 1, unit: 'Nos', rate: 0, gst_rate: 18, discount_type: '', discount_value: 0 }]);
   };
 
   const removeItem = (index) => {
@@ -86,22 +89,38 @@ const CreateInvoice = () => {
     }
   };
 
-  // Calculations
-  const calculateItemAmount = (item) => parseFloat(item.quantity) * parseFloat(item.rate) || 0;
+  // Calculate item-level amounts
+  const calculateItemBaseAmount = (item) => parseFloat(item.quantity) * parseFloat(item.rate) || 0;
+  
+  const calculateItemDiscount = (item) => {
+    const baseAmount = calculateItemBaseAmount(item);
+    if (item.discount_type === 'percentage' && item.discount_value > 0) {
+      return (baseAmount * parseFloat(item.discount_value)) / 100;
+    } else if (item.discount_type === 'amount' && item.discount_value > 0) {
+      return parseFloat(item.discount_value);
+    }
+    return 0;
+  };
+
+  const calculateItemAmount = (item) => calculateItemBaseAmount(item) - calculateItemDiscount(item);
   const calculateItemGst = (item) => (calculateItemAmount(item) * parseFloat(item.gst_rate)) / 100;
   const calculateItemTotal = (item) => calculateItemAmount(item) + calculateItemGst(item);
 
-  const subtotal = items.reduce((sum, item) => sum + calculateItemAmount(item), 0);
+  // Totals
+  const subtotal = items.reduce((sum, item) => sum + calculateItemBaseAmount(item), 0);
+  const totalItemDiscount = items.reduce((sum, item) => sum + calculateItemDiscount(item), 0);
+  const subtotalAfterItemDiscount = subtotal - totalItemDiscount;
   const totalItemGst = items.reduce((sum, item) => sum + calculateItemGst(item), 0);
 
-  const discountAmount = formData.discount_type === 'percentage'
-    ? (subtotal * parseFloat(formData.discount_value || 0)) / 100
+  // Invoice-level discount
+  const invoiceDiscountAmount = formData.discount_type === 'percentage'
+    ? (subtotalAfterItemDiscount * parseFloat(formData.discount_value || 0)) / 100
     : parseFloat(formData.discount_value || 0);
 
-  const subtotalAfterDiscount = subtotal - discountAmount;
+  const taxableAmount = subtotalAfterItemDiscount - invoiceDiscountAmount;
   
-  // Proportionally adjust GST after discount
-  const adjustedGst = subtotal > 0 ? totalItemGst * (subtotalAfterDiscount / subtotal) : 0;
+  // Proportionally adjust GST after invoice discount
+  const adjustedGst = subtotalAfterItemDiscount > 0 ? totalItemGst * (taxableAmount / subtotalAfterItemDiscount) : 0;
 
   // Determine GST type based on states
   const selectedCustomer = customers.find(c => c.id === formData.customer_id);
@@ -111,7 +130,7 @@ const CreateInvoice = () => {
   const sgst = isInterState ? 0 : adjustedGst / 2;
   const igst = isInterState ? adjustedGst : 0;
 
-  const totalAmount = subtotalAfterDiscount + adjustedGst;
+  const totalAmount = taxableAmount + adjustedGst;
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(amount || 0);
@@ -141,6 +160,9 @@ const CreateInvoice = () => {
         unit: item.unit,
         rate: parseFloat(item.rate),
         gst_rate: parseFloat(item.gst_rate),
+        discount_type: item.discount_type || null,
+        discount_value: parseFloat(item.discount_value) || 0,
+        discount_amount: calculateItemDiscount(item),
         amount: calculateItemAmount(item),
         gst_amount: calculateItemGst(item),
         total: calculateItemTotal(item)
@@ -149,9 +171,12 @@ const CreateInvoice = () => {
       const invoiceData = {
         customer_id: formData.customer_id,
         invoice_date: formData.invoice_date,
+        due_date: formData.due_date || null,
         discount_type: formData.discount_type || null,
         discount_value: parseFloat(formData.discount_value) || 0,
         notes: formData.notes,
+        terms: formData.terms,
+        status: formData.status,
         items: invoiceItems
       };
 
@@ -200,9 +225,9 @@ const CreateInvoice = () => {
             <CardTitle className="font-syne text-lg">Invoice Details</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-manrope font-medium text-slate-700 mb-1">Customer *</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Customer *</label>
                 <select
                   value={formData.customer_id}
                   onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
@@ -215,7 +240,7 @@ const CreateInvoice = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-manrope font-medium text-slate-700 mb-1">Invoice Date</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Invoice Date</label>
                 <Input
                   type="date"
                   value={formData.invoice_date}
@@ -223,8 +248,23 @@ const CreateInvoice = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-manrope font-medium text-slate-700 mb-1">Invoice Number</label>
-                <Input value={invoiceNumber} disabled className="bg-slate-50" />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Due Date</label>
+                <Input
+                  type="date"
+                  value={formData.due_date}
+                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="issued">Issued</option>
+                </select>
               </div>
             </div>
             {selectedCustomer && business && (
@@ -255,51 +295,44 @@ const CreateInvoice = () => {
               <table className="w-full">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-manrope font-semibold text-slate-600">Product/Service</th>
-                    <th className="px-4 py-3 text-left text-xs font-manrope font-semibold text-slate-600 w-20">Qty</th>
-                    <th className="px-4 py-3 text-left text-xs font-manrope font-semibold text-slate-600 w-16">Unit</th>
-                    <th className="px-4 py-3 text-right text-xs font-manrope font-semibold text-slate-600 w-28">Rate</th>
-                    <th className="px-4 py-3 text-right text-xs font-manrope font-semibold text-slate-600 w-20">GST %</th>
-                    <th className="px-4 py-3 text-right text-xs font-manrope font-semibold text-slate-600 w-28">Amount</th>
-                    <th className="px-4 py-3 w-10"></th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-600">Product/Service</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold text-slate-600 w-16">Qty</th>
+                    <th className="px-3 py-3 text-right text-xs font-semibold text-slate-600 w-24">Rate</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold text-slate-600 w-32">Item Discount</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold text-slate-600 w-16">GST %</th>
+                    <th className="px-3 py-3 text-right text-xs font-semibold text-slate-600 w-24">Amount</th>
+                    <th className="px-3 py-3 w-10"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {items.map((item, index) => (
                     <tr key={index} data-testid={`item-row-${index}`}>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <select
                           value={item.product_id}
                           onChange={(e) => handleProductSelect(index, e.target.value)}
-                          className="w-full h-8 rounded border border-slate-200 px-2 text-sm"
+                          className="w-full h-8 rounded border border-slate-200 px-2 text-sm mb-1"
                         >
-                          <option value="">Select or type...</option>
+                          <option value="">Select product...</option>
                           {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                         <Input
                           value={item.product_name}
                           onChange={(e) => handleItemChange(index, 'product_name', e.target.value)}
-                          placeholder="Product name"
-                          className="mt-1 h-8 text-sm"
+                          placeholder="Or type name"
+                          className="h-7 text-sm"
                         />
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <Input
                           type="number"
                           min="1"
                           value={item.quantity}
                           onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                          className="h-8 text-sm"
+                          className="h-8 text-sm text-center"
                         />
                       </td>
-                      <td className="px-4 py-3">
-                        <Input
-                          value={item.unit}
-                          onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <Input
                           type="number"
                           step="0.01"
@@ -308,7 +341,32 @@ const CreateInvoice = () => {
                           className="h-8 text-sm text-right"
                         />
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-1">
+                          <select
+                            value={item.discount_type}
+                            onChange={(e) => handleItemChange(index, 'discount_type', e.target.value)}
+                            className="h-8 w-16 rounded border border-slate-200 px-1 text-xs"
+                          >
+                            <option value="">None</option>
+                            <option value="percentage">%</option>
+                            <option value="amount">₹</option>
+                          </select>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.discount_value}
+                            onChange={(e) => handleItemChange(index, 'discount_value', e.target.value)}
+                            disabled={!item.discount_type}
+                            placeholder="0"
+                            className="h-8 w-16 text-sm text-center"
+                          />
+                        </div>
+                        {calculateItemDiscount(item) > 0 && (
+                          <p className="text-xs text-red-500 mt-1">-{formatCurrency(calculateItemDiscount(item))}</p>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
                         <select
                           value={item.gst_rate}
                           onChange={(e) => handleItemChange(index, 'gst_rate', e.target.value)}
@@ -317,10 +375,11 @@ const CreateInvoice = () => {
                           {[0, 5, 12, 18, 28].map(r => <option key={r} value={r}>{r}%</option>)}
                         </select>
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-slate-900">
-                        {formatCurrency(calculateItemAmount(item))}
+                      <td className="px-3 py-3 text-right">
+                        <p className="font-medium text-slate-900">{formatCurrency(calculateItemAmount(item))}</p>
+                        <p className="text-xs text-slate-500">+{formatCurrency(calculateItemGst(item))} GST</p>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <Button
                           type="button"
                           variant="ghost"
@@ -340,93 +399,126 @@ const CreateInvoice = () => {
           </CardContent>
         </Card>
 
-        {/* Discount & Totals */}
+        {/* Discount, Notes & Totals */}
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Discount */}
-          <Card className="border-slate-200">
-            <CardHeader className="border-b border-slate-100">
-              <CardTitle className="font-syne text-lg">Discount</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-manrope font-medium text-slate-700 mb-1">Type</label>
-                  <select
-                    value={formData.discount_type}
-                    onChange={(e) => setFormData({ ...formData, discount_type: e.target.value })}
-                    className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-                  >
-                    <option value="">No Discount</option>
-                    <option value="percentage">Percentage (%)</option>
-                    <option value="amount">Fixed Amount (₹)</option>
-                  </select>
+          {/* Left: Discount & Notes */}
+          <div className="space-y-6">
+            {/* Invoice Discount */}
+            <Card className="border-slate-200">
+              <CardHeader className="border-b border-slate-100 py-3">
+                <CardTitle className="font-syne text-base">Invoice Discount</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
+                    <select
+                      value={formData.discount_type}
+                      onChange={(e) => setFormData({ ...formData, discount_type: e.target.value })}
+                      className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                    >
+                      <option value="">No Discount</option>
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="amount">Fixed Amount (₹)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Value</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.discount_value}
+                      onChange={(e) => setFormData({ ...formData, discount_value: e.target.value })}
+                      disabled={!formData.discount_type}
+                      placeholder={formData.discount_type === 'percentage' ? '10' : '500'}
+                    />
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Notes & Terms */}
+            <Card className="border-slate-200">
+              <CardHeader className="border-b border-slate-100 py-3">
+                <CardTitle className="font-syne text-base">Notes & Terms</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3">
                 <div>
-                  <label className="block text-sm font-manrope font-medium text-slate-700 mb-1">Value</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.discount_value}
-                    onChange={(e) => setFormData({ ...formData, discount_value: e.target.value })}
-                    disabled={!formData.discount_type}
-                    placeholder={formData.discount_type === 'percentage' ? '10' : '500'}
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                  <Textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Notes visible to customer..."
+                    rows={2}
                   />
                 </div>
-              </div>
-              <div className="mt-4">
-                <label className="block text-sm font-manrope font-medium text-slate-700 mb-1">Notes</label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Additional notes..."
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Terms & Conditions</label>
+                  <Textarea
+                    value={formData.terms}
+                    onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
+                    placeholder="Payment terms, etc..."
+                    rows={2}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-          {/* Totals */}
-          <Card className="border-slate-200">
-            <CardHeader className="border-b border-slate-100">
-              <CardTitle className="font-syne text-lg">Summary</CardTitle>
+          {/* Right: Summary */}
+          <Card className="border-slate-200 h-fit">
+            <CardHeader className="border-b border-slate-100 py-3">
+              <CardTitle className="font-syne text-base">Invoice Summary</CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Subtotal</span>
+            <CardContent className="p-4">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Subtotal (before discounts)</span>
                   <span className="font-medium">{formatCurrency(subtotal)}</span>
                 </div>
-                {discountAmount > 0 && (
-                  <div className="flex justify-between text-sm text-red-600">
-                    <span>Discount {formData.discount_type === 'percentage' ? `(${formData.discount_value}%)` : ''}</span>
-                    <span>-{formatCurrency(discountAmount)}</span>
+                {totalItemDiscount > 0 && (
+                  <div className="flex justify-between text-red-600">
+                    <span>Item Discounts</span>
+                    <span>-{formatCurrency(totalItemDiscount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Subtotal after discount</span>
-                  <span className="font-medium">{formatCurrency(subtotalAfterDiscount)}</span>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Subtotal after item discounts</span>
+                  <span className="font-medium">{formatCurrency(subtotalAfterItemDiscount)}</span>
                 </div>
-                <div className="border-t border-slate-100 pt-3 space-y-2">
+                {invoiceDiscountAmount > 0 && (
+                  <div className="flex justify-between text-red-600">
+                    <span>Invoice Discount {formData.discount_type === 'percentage' ? `(${formData.discount_value}%)` : ''}</span>
+                    <span>-{formatCurrency(invoiceDiscountAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-slate-100 pt-2">
+                  <span className="text-slate-600">Taxable Amount</span>
+                  <span className="font-medium">{formatCurrency(taxableAmount)}</span>
+                </div>
+                
+                <div className="border-t border-slate-100 pt-2 space-y-1">
                   {!isInterState ? (
                     <>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-600">CGST</span>
+                      <div className="flex justify-between text-slate-600">
+                        <span>CGST</span>
                         <span>{formatCurrency(cgst)}</span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-600">SGST</span>
+                      <div className="flex justify-between text-slate-600">
+                        <span>SGST</span>
                         <span>{formatCurrency(sgst)}</span>
                       </div>
                     </>
                   ) : (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-600">IGST</span>
+                    <div className="flex justify-between text-slate-600">
+                      <span>IGST</span>
                       <span>{formatCurrency(igst)}</span>
                     </div>
                   )}
                 </div>
-                <div className="border-t border-slate-200 pt-3 flex justify-between">
-                  <span className="font-syne font-bold text-lg">Total</span>
+                
+                <div className="border-t-2 border-slate-200 pt-3 flex justify-between">
+                  <span className="font-syne font-bold text-lg">Grand Total</span>
                   <span className="font-syne font-bold text-lg text-primary">{formatCurrency(totalAmount)}</span>
                 </div>
               </div>

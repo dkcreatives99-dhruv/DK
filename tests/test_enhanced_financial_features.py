@@ -477,7 +477,9 @@ class TestCleanup:
         response = api_client.get(f"{BASE_URL}/api/expenses")
         if response.status_code == 200:
             for exp in response.json():
-                if exp.get("vendor", "").startswith("TEST_") or exp.get("reference_number", "").startswith("TEST_"):
+                vendor = exp.get("vendor") or ""
+                ref = exp.get("reference_number") or ""
+                if vendor.startswith("TEST_") or ref.startswith("TEST_"):
                     api_client.delete(f"{BASE_URL}/api/expenses/{exp['id']}")
         
         # Clean up test transfers

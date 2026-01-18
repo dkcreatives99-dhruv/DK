@@ -68,6 +68,34 @@ export const businessAPI = {
   },
 };
 
+// ==================== BANK ACCOUNTS ====================
+export const bankAccountsAPI = {
+  getAll: async () => {
+    const response = await api.get('/bank-accounts');
+    return response.data;
+  },
+  
+  create: async (data) => {
+    const response = await api.post('/bank-accounts', data);
+    return response.data;
+  },
+  
+  update: async (id, data) => {
+    const response = await api.put(`/bank-accounts/${id}`, data);
+    return response.data;
+  },
+  
+  setOpeningBalance: async (id, openingBalance) => {
+    const response = await api.put(`/bank-accounts/${id}/opening-balance?opening_balance=${openingBalance}`);
+    return response.data;
+  },
+  
+  delete: async (id) => {
+    const response = await api.delete(`/bank-accounts/${id}`);
+    return response.data;
+  },
+};
+
 // ==================== CUSTOMERS ====================
 export const customersAPI = {
   getAll: async () => {
@@ -116,8 +144,8 @@ export const productsAPI = {
 
 // ==================== INVOICES ====================
 export const invoicesAPI = {
-  getAll: async () => {
-    const response = await api.get('/invoices');
+  getAll: async (includeDeleted = false) => {
+    const response = await api.get(`/invoices?include_deleted=${includeDeleted}`);
     return response.data;
   },
   
@@ -138,6 +166,44 @@ export const invoicesAPI = {
   
   updatePayment: async (id, data) => {
     const response = await api.put(`/invoices/${id}/payment`, data);
+    return response.data;
+  },
+  
+  updateStatus: async (id, status) => {
+    const response = await api.put(`/invoices/${id}/status?status=${status}`);
+    return response.data;
+  },
+  
+  delete: async (id) => {
+    const response = await api.delete(`/invoices/${id}`);
+    return response.data;
+  },
+  
+  restore: async (id) => {
+    const response = await api.put(`/invoices/${id}/restore`);
+    return response.data;
+  },
+};
+
+// ==================== INCOME (NEW) ====================
+export const incomeAPI = {
+  getAll: async () => {
+    const response = await api.get('/income');
+    return response.data;
+  },
+  
+  create: async (data) => {
+    const response = await api.post('/income', data);
+    return response.data;
+  },
+  
+  update: async (id, data) => {
+    const response = await api.put(`/income/${id}`, data);
+    return response.data;
+  },
+  
+  delete: async (id) => {
+    const response = await api.delete(`/income/${id}`);
     return response.data;
   },
 };
@@ -165,6 +231,24 @@ export const expensesAPI = {
   },
 };
 
+// ==================== LEDGER SETTINGS ====================
+export const ledgerSettingsAPI = {
+  get: async () => {
+    const response = await api.get('/ledger-settings');
+    return response.data;
+  },
+  
+  create: async (data) => {
+    const response = await api.post('/ledger-settings', data);
+    return response.data;
+  },
+  
+  update: async (data) => {
+    const response = await api.put('/ledger-settings', data);
+    return response.data;
+  },
+};
+
 // ==================== DASHBOARD & LEDGER ====================
 export const dashboardAPI = {
   getStats: async () => {
@@ -176,6 +260,24 @@ export const dashboardAPI = {
 export const ledgerAPI = {
   getData: async () => {
     const response = await api.get('/ledger');
+    return response.data;
+  },
+};
+
+// ==================== REPORTS ====================
+export const reportsAPI = {
+  getOutstanding: async () => {
+    const response = await api.get('/reports/outstanding');
+    return response.data;
+  },
+  
+  getIncomeExpense: async () => {
+    const response = await api.get('/reports/income-expense');
+    return response.data;
+  },
+  
+  getAuditLog: async (limit = 100) => {
+    const response = await api.get(`/reports/audit-log?limit=${limit}`);
     return response.data;
   },
 };

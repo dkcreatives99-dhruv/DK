@@ -469,7 +469,8 @@ class TestCleanup:
         response = api_client.get(f"{BASE_URL}/api/income")
         if response.status_code == 200:
             for entry in response.json():
-                if entry.get("reference_number", "").startswith("TEST_"):
+                ref = entry.get("reference_number") or ""
+                if ref.startswith("TEST_"):
                     api_client.delete(f"{BASE_URL}/api/income/{entry['id']}")
         
         # Clean up test expenses

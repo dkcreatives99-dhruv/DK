@@ -85,6 +85,7 @@ function AppRoutes() {
           <Route path="/admin/invoices/:id" element={<ViewInvoice />} />
           <Route path="/admin/customers" element={<AdminCustomers />} />
           <Route path="/admin/products" element={<AdminProducts />} />
+          <Route path="/admin/income" element={<AdminIncome />} />
           <Route path="/admin/expenses" element={<AdminExpenses />} />
           <Route path="/admin/ledger" element={<AdminLedger />} />
           <Route path="/admin/settings" element={<AdminSettings />} />

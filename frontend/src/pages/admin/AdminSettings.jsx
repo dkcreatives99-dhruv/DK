@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { businessAPI, bankAccountsAPI, ledgerSettingsAPI } from '@/services/api';
+import { businessAPI, bankAccountsAPI, bankTransfersAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Building2, Save, Plus, Pencil, Trash2, CreditCard, Wallet, Star } from 'lucide-react';
+import { Building2, Save, Plus, Pencil, Trash2, CreditCard, Star, ArrowRightLeft, Lock, AlertCircle } from 'lucide-react';
 
 const INDIAN_STATES = [
   { name: 'Andhra Pradesh', code: '37' }, { name: 'Arunachal Pradesh', code: '12' },
@@ -33,10 +33,11 @@ const AdminSettings = () => {
   const { user } = useAuth();
   const [business, setBusiness] = useState(null);
   const [bankAccounts, setBankAccounts] = useState([]);
-  const [ledgerSettings, setLedgerSettings] = useState(null);
+  const [bankTransfers, setBankTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [bankDialogOpen, setBankDialogOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [editingBankId, setEditingBankId] = useState(null);
   
   const [formData, setFormData] = useState({
@@ -47,12 +48,13 @@ const AdminSettings = () => {
   
   const [bankFormData, setBankFormData] = useState({
     bank_name: '', account_number: '', ifsc_code: '', branch_name: '',
-    account_type: 'Current', is_primary: false
+    account_type: 'Current', is_primary: false, opening_balance: '', opening_balance_date: ''
   });
-  
-  const [ledgerFormData, setLedgerFormData] = useState({
-    opening_balance: '0',
-    opening_balance_date: new Date().toISOString().split('T')[0]
+
+  const [transferFormData, setTransferFormData] = useState({
+    from_bank_id: '', to_bank_id: '', amount: '',
+    transfer_date: new Date().toISOString().split('T')[0],
+    reference_number: '', remarks: ''
   });
 
   useEffect(() => {
@@ -61,10 +63,10 @@ const AdminSettings = () => {
 
   const fetchData = async () => {
     try {
-      const [businessData, bankData, ledgerData] = await Promise.all([
+      const [businessData, bankData, transfersData] = await Promise.all([
         businessAPI.get(),
         bankAccountsAPI.getAll(),
-        ledgerSettingsAPI.get()
+        bankTransfersAPI.getAll()
       ]);
       
       if (businessData) {
@@ -87,14 +89,7 @@ const AdminSettings = () => {
       }
       
       setBankAccounts(bankData || []);
-      
-      if (ledgerData) {
-        setLedgerSettings(ledgerData);
-        setLedgerFormData({
-          opening_balance: ledgerData.opening_balance?.toString() || '0',
-          opening_balance_date: ledgerData.opening_balance_date || new Date().toISOString().split('T')[0]
-        });
-      }
+      setBankTransfers(transfersData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -104,11 +99,7 @@ const AdminSettings = () => {
 
   const handleStateChange = (stateName) => {
     const stateObj = INDIAN_STATES.find(s => s.name === stateName);
-    setFormData({ 
-      ...formData, 
-      state: stateName, 
-      state_code: stateObj?.code || '' 
-    });
+    setFormData({ ...formData, state: stateName, state_code: stateObj?.code || '' });
   };
 
   const handleSubmit = async (e) => {
@@ -129,20 +120,6 @@ const AdminSettings = () => {
     }
   };
 
-  const handleLedgerSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await ledgerSettingsAPI.update({
-        opening_balance: parseFloat(ledgerFormData.opening_balance) || 0,
-        opening_balance_date: ledgerFormData.opening_balance_date
-      });
-      toast.success('Ledger settings saved');
-      fetchData();
-    } catch (error) {
-      toast.error('Failed to save ledger settings');
-    }
-  };
-
   const openBankDialog = (account = null) => {
     if (account) {
       setEditingBankId(account.id);
@@ -152,13 +129,16 @@ const AdminSettings = () => {
         ifsc_code: account.ifsc_code,
         branch_name: account.branch_name || '',
         account_type: account.account_type,
-        is_primary: account.is_primary
+        is_primary: account.is_primary,
+        opening_balance: account.opening_balance?.toString() || '0',
+        opening_balance_date: account.opening_balance_date || ''
       });
     } else {
       setEditingBankId(null);
       setBankFormData({
         bank_name: '', account_number: '', ifsc_code: '', branch_name: '',
-        account_type: 'Current', is_primary: bankAccounts.length === 0
+        account_type: 'Current', is_primary: bankAccounts.length === 0,
+        opening_balance: '', opening_balance_date: new Date().toISOString().split('T')[0]
       });
     }
     setBankDialogOpen(true);
@@ -166,18 +146,46 @@ const AdminSettings = () => {
 
   const handleBankSubmit = async (e) => {
     e.preventDefault();
-    try {
-      if (editingBankId) {
-        await bankAccountsAPI.update(editingBankId, bankFormData);
+    
+    if (editingBankId) {
+      // Update - don't send opening balance
+      try {
+        await bankAccountsAPI.update(editingBankId, {
+          bank_name: bankFormData.bank_name,
+          account_number: bankFormData.account_number,
+          ifsc_code: bankFormData.ifsc_code,
+          branch_name: bankFormData.branch_name,
+          account_type: bankFormData.account_type,
+          is_primary: bankFormData.is_primary
+        });
         toast.success('Bank account updated');
-      } else {
-        await bankAccountsAPI.create(bankFormData);
-        toast.success('Bank account added');
+        setBankDialogOpen(false);
+        fetchData();
+      } catch (error) {
+        toast.error(error.response?.data?.detail || 'Failed to update bank account');
       }
-      setBankDialogOpen(false);
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to save bank account');
+    } else {
+      // Create - require opening balance
+      if (!bankFormData.opening_balance || bankFormData.opening_balance === '') {
+        toast.error('Opening balance is mandatory');
+        return;
+      }
+      if (!bankFormData.opening_balance_date) {
+        toast.error('Opening balance date is mandatory');
+        return;
+      }
+      
+      try {
+        await bankAccountsAPI.create({
+          ...bankFormData,
+          opening_balance: parseFloat(bankFormData.opening_balance)
+        });
+        toast.success('Bank account added');
+        setBankDialogOpen(false);
+        fetchData();
+      } catch (error) {
+        toast.error(error.response?.data?.detail || 'Failed to add bank account');
+      }
     }
   };
 
@@ -192,6 +200,42 @@ const AdminSettings = () => {
     }
   };
 
+  const handleTransferSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (transferFormData.from_bank_id === transferFormData.to_bank_id) {
+      toast.error('Cannot transfer to the same account');
+      return;
+    }
+    
+    try {
+      await bankTransfersAPI.create({
+        ...transferFormData,
+        amount: parseFloat(transferFormData.amount)
+      });
+      toast.success('Transfer recorded');
+      setTransferDialogOpen(false);
+      setTransferFormData({
+        from_bank_id: '', to_bank_id: '', amount: '',
+        transfer_date: new Date().toISOString().split('T')[0],
+        reference_number: '', remarks: ''
+      });
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to record transfer');
+    }
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount || 0);
+  };
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const totalBalance = bankAccounts.reduce((sum, acc) => sum + (acc.current_balance || 0), 0);
+
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-slate-500">Loading settings...</div>;
   }
@@ -201,7 +245,7 @@ const AdminSettings = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-syne font-bold text-slate-900">Settings</h1>
-        <p className="text-slate-500 font-manrope text-sm mt-1">Configure your business profile, bank accounts, and ledger</p>
+        <p className="text-slate-500 font-manrope text-sm mt-1">Configure business profile and bank accounts</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -265,11 +309,6 @@ const AdminSettings = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Jurisdiction</label>
-                <Input value={formData.jurisdiction} onChange={(e) => setFormData({ ...formData, jurisdiction: e.target.value })} placeholder="Subject to Delhi Jurisdiction" />
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Signatory Name</label>
@@ -292,44 +331,6 @@ const AdminSettings = () => {
 
         {/* Right Column */}
         <div className="space-y-6">
-          {/* Ledger Settings */}
-          <Card className="border-slate-200">
-            <CardHeader className="border-b border-slate-100">
-              <CardTitle className="font-syne font-bold text-slate-900 flex items-center gap-2">
-                <Wallet className="w-5 h-5 text-green-600" />
-                Opening Balance
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <form onSubmit={handleLedgerSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Opening Balance (₹)</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={ledgerFormData.opening_balance}
-                      onChange={(e) => setLedgerFormData({ ...ledgerFormData, opening_balance: e.target.value })}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">As of Date</label>
-                    <Input
-                      type="date"
-                      value={ledgerFormData.opening_balance_date}
-                      onChange={(e) => setLedgerFormData({ ...ledgerFormData, opening_balance_date: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-slate-500">Set your starting balance for accurate ledger calculations.</p>
-                <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white">
-                  <Save className="w-4 h-4 mr-2" /> Save Opening Balance
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
           {/* Bank Accounts */}
           <Card className="border-slate-200">
             <CardHeader className="border-b border-slate-100 flex flex-row items-center justify-between">
@@ -337,31 +338,58 @@ const AdminSettings = () => {
                 <CreditCard className="w-5 h-5 text-blue-600" />
                 Bank Accounts
               </CardTitle>
-              <Button size="sm" onClick={() => openBankDialog()} className="bg-blue-600 hover:bg-blue-700 text-white">
-                <Plus className="w-4 h-4 mr-1" /> Add
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setTransferDialogOpen(true)} disabled={bankAccounts.length < 2}>
+                  <ArrowRightLeft className="w-4 h-4 mr-1" /> Transfer
+                </Button>
+                <Button size="sm" onClick={() => openBankDialog()} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Plus className="w-4 h-4 mr-1" /> Add
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-4">
+              {/* Total Balance */}
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-xs text-blue-600">Total Balance (All Accounts)</p>
+                <p className="text-2xl font-bold text-blue-700">{formatCurrency(totalBalance)}</p>
+              </div>
+              
               {bankAccounts.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-4">No bank accounts added yet.</p>
+                <div className="text-center py-6">
+                  <CreditCard className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500">No bank accounts added yet.</p>
+                  <p className="text-xs text-slate-400 mt-1">Add your first bank account to start tracking finances.</p>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {bankAccounts.map(account => (
-                    <div key={account.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        {account.is_primary && <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />}
-                        <div>
-                          <p className="font-medium text-slate-900">{account.bank_name}</p>
-                          <p className="text-xs text-slate-500">A/C: {account.account_number} | IFSC: {account.ifsc_code}</p>
+                    <div key={account.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          {account.is_primary && <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 mt-1" />}
+                          <div>
+                            <p className="font-medium text-slate-900">{account.bank_name}</p>
+                            <p className="text-xs text-slate-500">A/C: ****{account.account_number.slice(-4)} | {account.account_type}</p>
+                            <div className="flex items-center gap-3 mt-2">
+                              <div>
+                                <p className="text-xs text-slate-400">Opening</p>
+                                <p className="text-sm font-medium text-slate-600">{formatCurrency(account.opening_balance)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Current</p>
+                                <p className="text-sm font-bold text-blue-600">{formatCurrency(account.current_balance)}</p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => openBankDialog(account)} className="h-8 w-8 p-0">
-                          <Pencil className="w-4 h-4 text-slate-500" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteBank(account.id)} className="h-8 w-8 p-0">
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => openBankDialog(account)} className="h-8 w-8 p-0">
+                            <Pencil className="w-4 h-4 text-slate-500" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteBank(account.id)} className="h-8 w-8 p-0">
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -369,6 +397,31 @@ const AdminSettings = () => {
               )}
             </CardContent>
           </Card>
+
+          {/* Recent Transfers */}
+          {bankTransfers.length > 0 && (
+            <Card className="border-slate-200">
+              <CardHeader className="border-b border-slate-100">
+                <CardTitle className="font-syne font-bold text-slate-900 text-base flex items-center gap-2">
+                  <ArrowRightLeft className="w-4 h-4 text-slate-500" />
+                  Recent Transfers
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <div className="space-y-2">
+                  {bankTransfers.slice(0, 5).map(t => (
+                    <div key={t.id} className="flex items-center justify-between p-2 bg-slate-50 rounded text-sm">
+                      <div>
+                        <p className="text-slate-700">{t.from_bank_name} → {t.to_bank_name}</p>
+                        <p className="text-xs text-slate-400">{formatDate(t.transfer_date)}</p>
+                      </div>
+                      <p className="font-medium text-slate-900">{formatCurrency(t.amount)}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Account Info */}
           <Card className="border-slate-200">
@@ -448,6 +501,53 @@ const AdminSettings = () => {
                 </select>
               </div>
             </div>
+            
+            {/* Opening Balance - Only for new accounts */}
+            {!editingBankId && (
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-blue-600" />
+                  <p className="text-sm font-medium text-blue-700">Opening Balance (Required)</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-blue-600 mb-1">Amount (₹) *</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={bankFormData.opening_balance}
+                      onChange={(e) => setBankFormData({ ...bankFormData, opening_balance: e.target.value })}
+                      required
+                      placeholder="50000"
+                      className="bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-blue-600 mb-1">As of Date *</label>
+                    <Input
+                      type="date"
+                      value={bankFormData.opening_balance_date}
+                      onChange={(e) => setBankFormData({ ...bankFormData, opening_balance_date: e.target.value })}
+                      required
+                      className="bg-white"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-blue-500 mt-2">Opening balance will be locked after account creation.</p>
+              </div>
+            )}
+            
+            {/* Show locked opening balance for existing accounts */}
+            {editingBankId && (
+              <div className="p-3 bg-slate-100 rounded-lg flex items-center gap-2">
+                <Lock className="w-4 h-4 text-slate-500" />
+                <div>
+                  <p className="text-sm text-slate-600">Opening Balance: <strong>{formatCurrency(parseFloat(bankFormData.opening_balance))}</strong></p>
+                  <p className="text-xs text-slate-400">Opening balance is locked and cannot be changed</p>
+                </div>
+              </div>
+            )}
+            
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -462,6 +562,93 @@ const AdminSettings = () => {
               <Button type="button" variant="outline" onClick={() => setBankDialogOpen(false)}>Cancel</Button>
               <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
                 {editingBankId ? 'Update' : 'Add'} Account
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer Dialog */}
+      <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-syne">Transfer Between Accounts</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleTransferSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">From Account *</label>
+              <select
+                value={transferFormData.from_bank_id}
+                onChange={(e) => setTransferFormData({ ...transferFormData, from_bank_id: e.target.value })}
+                required
+                className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              >
+                <option value="">Select Source</option>
+                {bankAccounts.map(acc => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.bank_name} (Bal: {formatCurrency(acc.current_balance)})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">To Account *</label>
+              <select
+                value={transferFormData.to_bank_id}
+                onChange={(e) => setTransferFormData({ ...transferFormData, to_bank_id: e.target.value })}
+                required
+                className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              >
+                <option value="">Select Destination</option>
+                {bankAccounts.filter(acc => acc.id !== transferFormData.from_bank_id).map(acc => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.bank_name} (Bal: {formatCurrency(acc.current_balance)})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Amount (₹) *</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={transferFormData.amount}
+                  onChange={(e) => setTransferFormData({ ...transferFormData, amount: e.target.value })}
+                  required
+                  placeholder="10000"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Date *</label>
+                <Input
+                  type="date"
+                  value={transferFormData.transfer_date}
+                  onChange={(e) => setTransferFormData({ ...transferFormData, transfer_date: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Reference Number</label>
+              <Input
+                value={transferFormData.reference_number}
+                onChange={(e) => setTransferFormData({ ...transferFormData, reference_number: e.target.value })}
+                placeholder="Transaction ID"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+              <Input
+                value={transferFormData.remarks}
+                onChange={(e) => setTransferFormData({ ...transferFormData, remarks: e.target.value })}
+                placeholder="Notes"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setTransferDialogOpen(false)}>Cancel</Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                Record Transfer
               </Button>
             </div>
           </form>

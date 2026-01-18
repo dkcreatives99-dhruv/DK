@@ -486,7 +486,8 @@ class TestCleanup:
         response = api_client.get(f"{BASE_URL}/api/bank-transfers")
         if response.status_code == 200:
             for transfer in response.json():
-                if transfer.get("reference_number", "").startswith("TEST_"):
+                ref = transfer.get("reference_number") or ""
+                if ref.startswith("TEST_"):
                     api_client.delete(f"{BASE_URL}/api/bank-transfers/{transfer['id']}")
         
         # Clean up test bank accounts (only those without transactions)

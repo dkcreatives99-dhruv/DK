@@ -298,7 +298,7 @@ class IncomeResponse(BaseModel):
     amount: float
     payment_date: str
     payment_mode: str
-    bank_account_id: str
+    bank_account_id: Optional[str] = None  # Optional for backward compatibility with legacy data
     bank_name: Optional[str] = None
     reference_number: Optional[str] = None
     remarks: Optional[str] = None

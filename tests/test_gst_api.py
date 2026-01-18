@@ -475,22 +475,26 @@ class TestDashboardAndLedger:
         assert response.status_code == 200
         data = response.json()
         
-        # Verify all expected fields
+        # Verify all expected fields (updated for new API structure)
         assert "totalInvoices" in data
-        assert "totalRevenue" in data
+        assert "totalIncome" in data  # Changed from totalRevenue
         assert "totalCustomers" in data
         assert "totalProducts" in data
         assert "totalExpenses" in data
         assert "netProfit" in data
         assert "pendingPayments" in data
+        assert "openingBalance" in data  # New field
+        assert "totalOutstanding" in data  # New field
         
         print(f"✓ Dashboard stats retrieved:")
         print(f"  Total Invoices: {data['totalInvoices']}")
-        print(f"  Total Revenue: ₹{data['totalRevenue']}")
+        print(f"  Total Income: ₹{data['totalIncome']}")
         print(f"  Total Customers: {data['totalCustomers']}")
         print(f"  Total Products: {data['totalProducts']}")
         print(f"  Total Expenses: ₹{data['totalExpenses']}")
         print(f"  Net Profit: ₹{data['netProfit']}")
+        print(f"  Opening Balance: ₹{data['openingBalance']}")
+        print(f"  Outstanding: ₹{data['totalOutstanding']}")
     
     def test_get_ledger_data(self, auth_headers):
         """Test getting ledger data"""
@@ -498,20 +502,22 @@ class TestDashboardAndLedger:
         assert response.status_code == 200
         data = response.json()
         
-        # Verify all expected fields
+        # Verify all expected fields (updated for new API structure)
+        assert "openingBalance" in data
         assert "totalIncome" in data
         assert "totalExpenses" in data
-        assert "netProfit" in data
-        assert "pendingAmount" in data
+        assert "closingBalance" in data  # Changed from netProfit
+        assert "totalOutstanding" in data  # Changed from pendingAmount
         assert "recentIncome" in data
         assert "recentExpenses" in data
         assert "allInvoices" in data
         
         print(f"✓ Ledger data retrieved:")
+        print(f"  Opening Balance: ₹{data['openingBalance']}")
         print(f"  Total Income: ₹{data['totalIncome']}")
         print(f"  Total Expenses: ₹{data['totalExpenses']}")
-        print(f"  Net Profit: ₹{data['netProfit']}")
-        print(f"  Pending Amount: ₹{data['pendingAmount']}")
+        print(f"  Closing Balance: ₹{data['closingBalance']}")
+        print(f"  Outstanding: ₹{data['totalOutstanding']}")
 
 
 # ==================== FIXTURES ====================

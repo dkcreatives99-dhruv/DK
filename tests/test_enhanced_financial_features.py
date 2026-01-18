@@ -494,7 +494,8 @@ class TestCleanup:
         response = api_client.get(f"{BASE_URL}/api/bank-accounts")
         if response.status_code == 200:
             for account in response.json():
-                if account.get("bank_name", "").startswith("TEST_"):
+                bank_name = account.get("bank_name") or ""
+                if bank_name.startswith("TEST_"):
                     try:
                         api_client.delete(f"{BASE_URL}/api/bank-accounts/{account['id']}")
                     except:

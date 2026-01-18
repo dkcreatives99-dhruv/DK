@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   FileText, Users, Package, TrendingUp, Eye, Plus,
-  IndianRupee, Clock, Wallet, AlertCircle
+  IndianRupee, Clock, Wallet, AlertCircle, Briefcase, User, CreditCard
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -102,6 +102,9 @@ const AdminDashboard = () => {
               <div>
                 <p className="text-slate-500 font-manrope text-xs">Opening Balance</p>
                 <p className="text-xl font-syne font-bold text-slate-900 mt-1">{formatCurrency(stats?.openingBalance)}</p>
+                {stats?.bankAccountsCount > 0 && (
+                  <p className="text-xs text-slate-400 mt-1">{stats.bankAccountsCount} account{stats.bankAccountsCount > 1 ? 's' : ''}</p>
+                )}
               </div>
               <div className="w-10 h-10 rounded-xl bg-slate-500 flex items-center justify-center">
                 <Wallet className="w-5 h-5 text-white" />
@@ -116,6 +119,14 @@ const AdminDashboard = () => {
               <div>
                 <p className="text-green-600 font-manrope text-xs">Income Received</p>
                 <p className="text-xl font-syne font-bold text-green-700 mt-1">{formatCurrency(stats?.totalIncome)}</p>
+                <div className="flex gap-2 mt-1 text-xs">
+                  <span className="text-blue-600" title="Business Income">
+                    📄 {formatCurrency(stats?.businessIncome)}
+                  </span>
+                  <span className="text-purple-600" title="Personal Income">
+                    👤 {formatCurrency(stats?.personalIncome)}
+                  </span>
+                </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center">
                 <IndianRupee className="w-5 h-5 text-white" />
@@ -142,13 +153,45 @@ const AdminDashboard = () => {
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-600 font-manrope text-xs">Net Balance</p>
-                <p className={`text-xl font-syne font-bold mt-1 ${(stats?.netProfit || 0) >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
-                  {formatCurrency(stats?.netProfit)}
+                <p className="text-blue-600 font-manrope text-xs">Current Balance</p>
+                <p className={`text-xl font-syne font-bold mt-1 ${(stats?.currentBalance || 0) >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+                  {formatCurrency(stats?.currentBalance)}
                 </p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-white" />
+                <CreditCard className="w-5 h-5 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Income Breakdown */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="border-blue-200 hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                <Briefcase className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-blue-600">Business Income</p>
+                <p className="text-lg font-bold text-blue-700">{formatCurrency(stats?.businessIncome)}</p>
+                <p className="text-xs text-slate-400">Invoice payments</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-purple-200 hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                <User className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-xs text-purple-600">Personal Income</p>
+                <p className="text-lg font-bold text-purple-700">{formatCurrency(stats?.personalIncome)}</p>
+                <p className="text-xs text-slate-400">Non-invoice sources</p>
               </div>
             </div>
           </CardContent>

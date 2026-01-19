@@ -64,17 +64,52 @@ Create a modern, conversion-focused website for DK Kinetic Digital LLP with inte
   - Bank details
   - Authorised signatory section
 
+#### Advanced Financial Features (January 18, 2026) ✅ NEW
+- [x] **Dual-Type Income Support**
+  - Invoice-linked income (Business) - Payment against invoices
+  - Personal income (Non-invoice) - Family Support, Personal Transfer, Capital Infusion, Other
+  - Separate tracking and reporting for business vs personal
+- [x] **Mandatory Bank Account for Income**
+  - All income entries must specify which bank received the money
+  - "Credited To" field in income form
+- [x] **Mandatory Bank Account for Expenses**
+  - All expenses must specify which bank was debited
+  - "Paid From" field in expense form
+- [x] **Mandatory Opening Balance for Bank Accounts**
+  - Opening balance required when creating new bank accounts
+  - Opening balance date required
+  - Opening balance locked after account creation (cannot be modified)
+- [x] **Bank-wise Ledger View**
+  - Individual ledger for each bank account
+  - Running balance calculation
+  - Transaction details with credit/debit columns
+  - Opening balance row at top
+- [x] **Consolidated Ledger View**
+  - Combined view across all bank accounts
+  - Business vs Personal income breakdown
+  - Total opening balance from all accounts
+  - Closing balance calculation
+- [x] **Bank Transfers**
+  - Transfer funds between bank accounts
+  - Balance validation before transfer
+  - Audit trail for transfers
+- [x] **Dashboard Income Breakdown**
+  - Business Income (from invoices)
+  - Personal Income (non-invoice)
+  - Current Balance across all accounts
+
 #### Ledger Calculation (Corrected)
 ```
 Opening Balance + Total Income Received - Total Expenses = Closing Balance
 ```
 - Invoice total ≠ income unless payment is recorded
 - Outstanding amount tracked separately
+- Bank-wise balance calculated with running totals
 
 ## Tech Stack
 - **Frontend:** React, Tailwind CSS, Framer Motion, Shadcn/UI, jsPDF, html2canvas
 - **Backend:** FastAPI, Python
-- **Database:** MongoDB (all data - contacts, invoices, customers, products, expenses, income, bank accounts)
+- **Database:** MongoDB (all data - contacts, invoices, customers, products, expenses, income, bank accounts, audit logs, bank transfers)
 - **Auth:** Custom JWT authentication (python-jose, passlib[bcrypt])
 
 ## Admin Credentials
@@ -85,13 +120,13 @@ Opening Balance + Total Income Received - Total Expenses = Closing Balance
 ## Database Collections (MongoDB)
 - `users` - User accounts for admin access
 - `business` - User business profile with GSTIN
-- `bank_accounts` - Multiple bank accounts per user
+- `bank_accounts` - Multiple bank accounts per user with opening balance
+- `bank_transfers` - Inter-bank transfer records
 - `customers` - Customer records with GST info
 - `products` - Product/service catalog with GST rates
 - `invoices` - Invoice records with GST calculations (supports soft delete)
-- `income` - Payment records against invoices
-- `expenses` - Expense tracking
-- `ledger_settings` - Opening balance configuration
+- `income` - Payment records (invoice-linked or personal)
+- `expenses` - Expense tracking with bank account link
 - `audit_logs` - Action logs for all entities
 - `contacts` - Contact form submissions
 
@@ -107,12 +142,18 @@ Opening Balance + Total Income Received - Total Expenses = Closing Balance
 - `POST /api/business` - Create business profile
 - `PUT /api/business` - Update business profile
 
-### Bank Accounts
-- `GET /api/bank-accounts` - List all bank accounts
-- `POST /api/bank-accounts` - Create bank account
-- `PUT /api/bank-accounts/{id}` - Update bank account
-- `PUT /api/bank-accounts/{id}/opening-balance` - Set opening balance
-- `DELETE /api/bank-accounts/{id}` - Delete bank account
+### Bank Accounts (Enhanced)
+- `GET /api/bank-accounts` - List all bank accounts with current balance
+- `GET /api/bank-accounts/{id}` - Get single bank account
+- `POST /api/bank-accounts` - Create bank account (opening_balance & opening_balance_date REQUIRED)
+- `PUT /api/bank-accounts/{id}` - Update bank account (opening_balance NOT updatable)
+- `PUT /api/bank-accounts/{id}/opening-balance` - Admin correction with reason for audit
+- `DELETE /api/bank-accounts/{id}` - Delete bank account (only if no transactions)
+
+### Bank Transfers (NEW)
+- `GET /api/bank-transfers` - List all transfers
+- `POST /api/bank-transfers` - Create transfer (validates balance)
+- `DELETE /api/bank-transfers/{id}` - Delete transfer
 
 ### Customers
 - `GET /api/customers` - List all customers
@@ -136,26 +177,24 @@ Opening Balance + Total Income Received - Total Expenses = Closing Balance
 - `DELETE /api/invoices/{id}` - Soft delete invoice
 - `PUT /api/invoices/{id}/restore` - Restore deleted invoice
 
-### Income (NEW)
+### Income (Enhanced - Dual Type)
 - `GET /api/income` - List all income entries
-- `POST /api/income` - Record payment against invoice
+- `GET /api/income?income_type=invoice` - Filter business income
+- `GET /api/income?income_type=personal` - Filter personal income
+- `POST /api/income` - Record income (bank_account_id REQUIRED)
 - `PUT /api/income/{id}` - Update income entry
 - `DELETE /api/income/{id}` - Delete income entry
 
-### Expenses
+### Expenses (Enhanced - Mandatory Bank)
 - `GET /api/expenses` - List all expenses
-- `POST /api/expenses` - Create expense
+- `POST /api/expenses` - Create expense (bank_account_id REQUIRED)
 - `PUT /api/expenses/{id}` - Update expense
 - `DELETE /api/expenses/{id}` - Delete expense
 
-### Ledger Settings
-- `GET /api/ledger-settings` - Get ledger settings
-- `POST /api/ledger-settings` - Create settings
-- `PUT /api/ledger-settings` - Update settings (opening balance)
-
-### Dashboard & Ledger
-- `GET /api/dashboard/stats` - Get dashboard statistics
-- `GET /api/ledger` - Get ledger data with all calculations
+### Dashboard & Ledger (Enhanced)
+- `GET /api/dashboard/stats` - Dashboard stats with business/personal income breakdown
+- `GET /api/ledger` - Consolidated ledger data
+- `GET /api/ledger/bank/{bank_id}` - Bank-wise ledger with running balance
 
 ### Reports
 - `GET /api/reports/outstanding` - Outstanding invoices report
@@ -163,24 +202,28 @@ Opening Balance + Total Income Received - Total Expenses = Closing Balance
 - `GET /api/reports/audit-log` - Audit log entries
 
 ## Testing Status (January 18, 2026)
-- ✅ All 47 backend API tests passed (100%)
-  - 27 existing tests (auth, customers, products, expenses, invoices, dashboard)
-  - 20 new tests (bank accounts, ledger settings, income, soft delete, discounts)
-- ✅ All frontend UI tests passed
-- Test files: `/app/tests/test_gst_api.py`, `/app/tests/test_enhanced_features.py`
+- ✅ All 22 enhanced financial feature tests passed (100%)
+- ✅ Backend API tests: Authentication, Bank Accounts, Income, Expenses, Transfers, Ledger
+- ✅ Frontend UI tests: All pages and flows working
+- Test files: `/app/tests/test_enhanced_financial_features.py`
 
 ## Prioritized Backlog
 
-### P0 (Critical) ✅ DONE
+### P0 (Critical) ✅ ALL DONE
 - [x] Public website with all sections
 - [x] Admin authentication (JWT)
 - [x] Invoice management system with MongoDB
 - [x] Income module for payment tracking
-- [x] Multiple bank accounts
+- [x] Multiple bank accounts with opening balance
 - [x] Item-level and invoice-level discounts
 - [x] Soft delete for invoices
 - [x] Professional PDF invoice layout
 - [x] Proper ledger calculation (Opening + Income - Expenses)
+- [x] Dual-type income (Business vs Personal)
+- [x] Mandatory bank account for income/expenses
+- [x] Mandatory opening balance for bank accounts
+- [x] Bank-wise and consolidated ledger views
+- [x] Bank transfers between accounts
 
 ### P1 (High Priority) - Upcoming
 - [ ] Super-admin feature for cross-user data visibility
@@ -217,10 +260,11 @@ Opening Balance + Total Income Received - Total Expenses = Closing Balance
 │   │   │   └── AuthContext.js     # JWT auth state management
 │   │   ├── pages/
 │   │   │   ├── admin/
-│   │   │   │   ├── AdminIncome.jsx       # NEW - Payment tracking
-│   │   │   │   ├── AdminSettings.jsx     # Bank accounts, opening balance
-│   │   │   │   ├── AdminLedger.jsx       # Updated ledger calculation
-│   │   │   │   ├── AdminDashboard.jsx    # Updated stats
+│   │   │   │   ├── AdminDashboard.jsx    # Updated with income breakdown
+│   │   │   │   ├── AdminIncome.jsx       # Dual type income support
+│   │   │   │   ├── AdminExpenses.jsx     # Mandatory bank selection
+│   │   │   │   ├── AdminLedger.jsx       # Consolidated + Bank-wise views
+│   │   │   │   ├── AdminSettings.jsx     # Bank accounts with opening balance
 │   │   │   │   ├── ViewInvoice.jsx       # Professional PDF layout
 │   │   │   │   ├── CreateInvoice.jsx     # Item-level discounts
 │   │   │   │   └── ...
@@ -230,10 +274,11 @@ Opening Balance + Total Income Received - Total Expenses = Closing Balance
 │   │   └── App.js
 │   └── .env                      # REACT_APP_BACKEND_URL
 └── tests/
-    ├── test_gst_api.py           # Original API tests (27 tests)
-    └── test_enhanced_features.py # New features tests (20 tests)
+    └── test_enhanced_financial_features.py  # 22 tests for enhanced features
 ```
 
 ## Notes
-- The "Made with Emergent" badge in preview is from Emergent platform script and is expected for Emergent-hosted apps
-- All user data (business, invoices, customers, etc.) has been preserved during migrations
+- Legacy data (income/expenses without bank_account_id) is supported with optional fields in response models
+- All new income/expense entries require bank account selection (validated at API level)
+- Opening balance is locked immediately after bank account creation
+- Bank transfers validate sufficient balance before execution

@@ -1,10 +1,14 @@
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 // Public Pages
 import HomePage from "@/pages/HomePage";
+import TermsPage from "@/pages/TermsPage";
+import PrivacyPage from "@/pages/PrivacyPage";
+import DisclaimerPage from "@/pages/DisclaimerPage";
 
 // Admin Pages
 import AdminAuth from "@/pages/admin/AdminAuth";
@@ -19,6 +23,17 @@ import AdminIncome from "@/pages/admin/AdminIncome";
 import AdminExpenses from "@/pages/admin/AdminExpenses";
 import AdminLedger from "@/pages/admin/AdminLedger";
 import AdminSettings from "@/pages/admin/AdminSettings";
+
+// Scroll to Top Component - ensures pages open from the top
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+};
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -61,12 +76,18 @@ const AuthRoute = ({ children }) => {
 function AppRoutes() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         {/* Public Website Routes */}
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<HomePage />} />
         <Route path="/services" element={<HomePage />} />
         <Route path="/contact" element={<HomePage />} />
+        
+        {/* Legal Pages */}
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/disclaimer" element={<DisclaimerPage />} />
 
         {/* Admin Auth Route */}
         <Route path="/admin" element={<AuthRoute><AdminAuth /></AuthRoute>} />

@@ -52,8 +52,7 @@ const Navbar = () => {
                 <span className="text-white font-syne font-bold text-lg">DK</span>
               </div>
               <div className="hidden sm:block">
-                <span className="text-white font-syne font-bold text-xl">Kinetic</span>
-                <span className="text-slate-400 font-manrope text-sm block -mt-1">Digital LLP</span>
+                <span className="text-white font-syne font-bold text-xl">KINETIC DIGITAL</span>
               </div>
             </a>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Sparkles, Zap, Globe } from 'lucide-react';
+import { ArrowRight, Sparkles, Zap, Globe, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const HeroSection = () => {
@@ -37,8 +37,8 @@ const HeroSection = () => {
               transition={{ duration: 0.6 }}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-8"
             >
-              <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-              <span className="text-slate-300 text-sm font-manrope">Digital Transformation Partner</span>
+              <Shield className="w-4 h-4 text-primary" />
+              <span className="text-slate-300 text-sm font-manrope">Software & Digital Tech Solutions</span>
             </motion.div>
 
             <motion.h1
@@ -48,8 +48,9 @@ const HeroSection = () => {
               className="text-4xl sm:text-5xl lg:text-6xl font-syne font-bold text-white leading-tight mb-6"
               data-testid="hero-title"
             >
-              Accelerating Your{' '}
-              <span className="gradient-text">Digital Future</span>
+              Where Creativity Meets{' '}
+              <span className="gradient-text">Technology</span>{' '}
+              <span className="text-slate-400 text-3xl sm:text-4xl lg:text-5xl">with Privacy</span>
             </motion.h1>
 
             <motion.p
@@ -59,9 +60,9 @@ const HeroSection = () => {
               className="text-slate-400 text-base md:text-lg font-manrope leading-relaxed mb-8 max-w-lg"
               data-testid="hero-description"
             >
-              We craft exceptional digital experiences through innovative marketing, 
-              cutting-edge technology, and AI-powered solutions. Transform your 
-              business with India's emerging digital agency.
+              We craft exceptional digital experiences through innovative software development, 
+              cutting-edge technology, and privacy-focused solutions. Transform your 
+              business with India's trusted digital partner.
             </motion.p>
 
             <motion.div
@@ -150,12 +151,12 @@ const HeroSection = () => {
                 className="absolute bottom-4 left-4 glass rounded-2xl p-4"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center">
-                    <Globe className="w-5 h-5 text-secondary" />
+                  <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-green-400" />
                   </div>
                   <div>
-                    <div className="text-white font-semibold text-sm">Global Reach</div>
-                    <div className="text-slate-400 text-xs">Worldwide Clients</div>
+                    <div className="text-white font-semibold text-sm">Privacy First</div>
+                    <div className="text-slate-400 text-xs">Secure by Design</div>
                   </div>
                 </div>
               </motion.div>

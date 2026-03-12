@@ -1,26 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Target, Eye, Heart, Award, Users, Lightbulb } from 'lucide-react';
+import { Target, Eye, Heart, Award, Users, Lightbulb, Shield } from 'lucide-react';
 
 const AboutSection = () => {
   const values = [
     { icon: Lightbulb, title: 'Innovation', desc: 'Pushing boundaries with creative solutions' },
     { icon: Heart, title: 'Integrity', desc: 'Building trust through transparency' },
-    { icon: Users, title: 'Collaboration', desc: 'Growing together with our clients' },
+    { icon: Shield, title: 'Privacy', desc: 'Your data security is our priority' },
     { icon: Award, title: 'Excellence', desc: 'Delivering exceptional quality always' },
-  ];
-
-  const team = [
-    {
-      name: 'Dhruv Kaushik',
-      role: 'Co-Founder & CEO',
-      desc: 'Visionary leader driving digital innovation'
-    },
-    {
-      name: 'Ram Phul Sharma',
-      role: 'Co-Founder & COO',
-      desc: 'Operations expert ensuring seamless delivery'
-    }
   ];
 
   return (
@@ -90,15 +77,15 @@ const AboutSection = () => {
               Your Partner in Digital Excellence
             </h2>
             <p className="text-slate-600 font-manrope text-base md:text-lg leading-relaxed mb-6">
-              Founded in Rohtak, Haryana, <strong>DK Kinetic Digital LLP</strong> is a 
-              premier digital marketing and technology company dedicated to transforming 
-              businesses through innovative digital solutions.
+              <strong>DK KINETIC DIGITAL</strong> is a premier software and digital technology 
+              company dedicated to transforming businesses through innovative digital solutions 
+              with a strong focus on privacy and security.
             </p>
             <p className="text-slate-600 font-manrope text-base md:text-lg leading-relaxed mb-8">
               We combine creativity with technology to deliver results that matter. From 
               startups to enterprises, we've helped over 50 clients achieve their digital 
-              goals through strategic marketing, cutting-edge web development, and 
-              AI-powered solutions.
+              goals through strategic software development, cutting-edge web solutions, and 
+              AI-powered applications—all while keeping your data secure.
             </p>
 
             {/* Mission & Vision */}
@@ -134,7 +121,6 @@ const AboutSection = () => {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mb-20"
         >
           <h3 className="text-2xl font-syne font-bold text-slate-900 text-center mb-10">
             Our Core Values
@@ -154,41 +140,6 @@ const AboutSection = () => {
                 </div>
                 <h4 className="font-syne font-bold text-slate-900 mb-2">{value.title}</h4>
                 <p className="text-slate-500 font-manrope text-sm">{value.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Leadership */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-        >
-          <h3 className="text-2xl font-syne font-bold text-slate-900 text-center mb-10">
-            Leadership
-          </h3>
-          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-            {team.map((member, index) => (
-              <motion.div
-                key={member.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="flex items-center gap-6 p-6 rounded-2xl bg-white border border-slate-100 hover:shadow-lg transition-shadow duration-300"
-                data-testid={`team-member-${index + 1}`}
-              >
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-syne font-bold text-2xl">
-                    {member.name.split(' ').map(n => n[0]).join('')}
-                  </span>
-                </div>
-                <div>
-                  <h4 className="font-syne font-bold text-slate-900 text-lg mb-1">{member.name}</h4>
-                  <p className="text-primary font-manrope font-medium text-sm mb-2">{member.role}</p>
-                  <p className="text-slate-500 font-manrope text-sm">{member.desc}</p>
-                </div>
               </motion.div>
             ))}
           </div>

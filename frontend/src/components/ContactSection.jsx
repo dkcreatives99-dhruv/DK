@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Phone, Mail, Clock, Send, CheckCircle2 } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Send, CheckCircle2, MessageCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -23,18 +23,18 @@ const ContactSection = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const services = [
-    'Digital Marketing',
+    'Software Development',
     'Web Development',
     'AI & Automation',
-    'Creative & Branding',
-    'Event Management',
+    'Digital Marketing',
+    'Mobile App Development',
     'Other'
   ];
 
   const contactInfo = [
-    { icon: MapPin, label: 'Office', value: 'Rohtak, Haryana, India' },
-    { icon: Phone, label: 'Phone', value: '+91 XXXX XXXX XX' },
-    { icon: Mail, label: 'Email', value: 'hello@dkkineticdigital.com' },
+    { icon: MapPin, label: 'Office', value: '1A/204 NG Suncity 2, Kandivali East, Mumbai 400101' },
+    { icon: Phone, label: 'Phone', value: '+91 9996749994', href: 'tel:+919996749994' },
+    { icon: MessageCircle, label: 'WhatsApp', value: '+91 9996749994', href: 'https://wa.me/919996749994', color: 'text-green-500' },
     { icon: Clock, label: 'Hours', value: 'Mon - Sat: 9AM - 6PM' },
   ];
 
@@ -283,20 +283,31 @@ const ContactSection = () => {
                   transition={{ delay: index * 0.1 }}
                   className="glass rounded-2xl p-5"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-                    <info.icon className="w-5 h-5 text-primary" />
+                  <div className={`w-10 h-10 rounded-xl ${info.color ? 'bg-green-500/10' : 'bg-primary/10'} flex items-center justify-center mb-3`}>
+                    <info.icon className={`w-5 h-5 ${info.color || 'text-primary'}`} />
                   </div>
                   <p className="text-slate-500 font-manrope text-xs mb-1">{info.label}</p>
-                  <p className="text-white font-manrope text-sm font-medium">{info.value}</p>
+                  {info.href ? (
+                    <a 
+                      href={info.href} 
+                      target={info.href.startsWith('https') ? '_blank' : '_self'}
+                      rel="noopener noreferrer"
+                      className={`font-manrope text-sm font-medium ${info.color ? 'text-green-400 hover:text-green-300' : 'text-white hover:text-primary'} transition-colors`}
+                    >
+                      {info.value}
+                    </a>
+                  ) : (
+                    <p className="text-white font-manrope text-sm font-medium">{info.value}</p>
+                  )}
                 </motion.div>
               ))}
             </div>
 
-            {/* Map */}
+            {/* Map - Mumbai Kandivali */}
             <div className="glass rounded-3xl overflow-hidden h-64 md:h-80">
               <iframe
-                title="DK Kinetic Digital Office Location"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d111519.76451682!2d76.53091399999999!3d28.8943099!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390d838a0c5fb28d%3A0x5cb4a08eaf4d3c48!2sRohtak%2C%20Haryana!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
+                title="DK KINETIC DIGITAL Office Location"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3767.5508832671986!2d72.85970307620982!3d19.20428364813697!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7b7b5ee6d0001%3A0x8c2e5c5c5c5c5c5c!2sKandivali%20East%2C%20Mumbai%2C%20Maharashtra%20400101!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
@@ -308,14 +319,25 @@ const ContactSection = () => {
               />
             </div>
 
-            {/* Office Image */}
-            <div className="glass rounded-3xl overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1635652618167-55b4411ffdbf?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBnbGFzcyUyMG9mZmljZSUyMGJ1aWxkaW5nJTIwaW5kaWElMjBleHRlcmlvcnxlbnwwfHx8fDE3NjgyMTM3OTN8MA&ixlib=rb-4.1.0&q=85"
-                alt="DK Kinetic Office"
-                className="w-full h-48 object-cover"
-              />
-            </div>
+            {/* WhatsApp CTA */}
+            <a
+              href="https://wa.me/919996749994?text=Hi%20DK%20KINETIC%20DIGITAL!%20I'm%20interested%20in%20your%20services."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="glass rounded-2xl p-6 flex items-center gap-4 hover:bg-green-500/10 transition-colors cursor-pointer group"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-green-500/20 flex items-center justify-center">
+                <MessageCircle className="w-7 h-7 text-green-500" />
+              </div>
+              <div>
+                <h4 className="text-white font-syne font-bold text-lg group-hover:text-green-400 transition-colors">
+                  Chat on WhatsApp
+                </h4>
+                <p className="text-slate-400 font-manrope text-sm">
+                  Quick response • Available Mon-Sat
+                </p>
+              </div>
+            </a>
           </motion.div>
         </div>
       </div>
